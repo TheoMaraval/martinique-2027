@@ -49,7 +49,7 @@ export function UnplacedPanel() {
       <span className="unplaced-grip" aria-hidden="true" />
       <button className="unplaced-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open}>
         <span className="unplaced-title">À placer</span>
-        <span className="count-pill">{items.length}</span>
+        <span className={`count-pill ${items.length ? '' : 'is-empty'}`}>{items.length}</span>
         <span className="unplaced-chevron">{open ? <ChevronDown size={20} /> : <ChevronUp size={20} />}</span>
       </button>
       {open && (

@@ -33,7 +33,8 @@ export function tripSubtitle(trip: Pick<Trip, 'start_date' | 'end_date'>, travel
   const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
   const days = Math.round((start.getTime() - today) / DAY_MS);
   const countdown = days > 0 ? `J-${days}` : "C'est parti !";
-  return `${range} · ${travellers} voyageur${travellers > 1 ? 's' : ''} · ${countdown}`;
+  // Le compte à rebours d'abord : sur mobile la fin du sous-titre est tronquée.
+  return `${countdown} · ${range} · ${travellers} voyageur${travellers > 1 ? 's' : ''}`;
 }
 
 function InvalidLink() {
