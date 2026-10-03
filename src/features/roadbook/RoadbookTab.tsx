@@ -18,9 +18,9 @@ export function RoadbookTab() {
         <span className="switch-track" aria-hidden="true"><span className="switch-thumb" /></span>
         <span>Mon parcours uniquement</span>
       </label>
-      <ExpensesTable highlight={me} />
       <RouteMap points={points} />
       <DayRecap days={days} />
+      <ExpensesTable highlight={me} />
     </div>
   );
 }
