@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ChevronDown, Link2Off, Palmtree } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { ChevronDown, CircleHelp, Link2Off, Palmtree } from 'lucide-react';
 import { TripProvider } from './data/TripProvider';
 import { useTrip } from './data/TripContext';
 import { IdentityPicker } from './identity/IdentityPicker';
@@ -10,6 +10,8 @@ import { WishesTab } from './features/wishes/WishesTab';
 import { PlanningTab } from './features/planning/PlanningTab';
 import { RoadbookTab } from './features/roadbook/RoadbookTab';
 import type { Trip } from './domain/types';
+import { Onboarding } from './onboarding/Onboarding';
+import { hasSeenTuto, markTutoSeen } from './onboarding/storage';
 
 export function parseTripCode(hash: string): string | null {
   const m = /^#\/t\/([A-Za-z0-9]+)/.exec(hash);
@@ -44,9 +46,12 @@ function InvalidLink() {
   );
 }
 
-function Shell() {
+export function Shell({ code }: { code: string }) {
   const { status, state, me, setMe, online, retry } = useTrip();
   const [tab, setTab] = useState<Tab>('envies');
+  // Tutoriel : une fois par appareil (localStorage), ou une fois par session si le stockage est indisponible.
+  const [tuto, setTuto] = useState(() => !hasSeenTuto(code));
+  const closeTuto = useCallback(() => { markTutoSeen(code); setTuto(false); }, [code]);
   if (status === 'invalid') return <InvalidLink />;
   if (!state) {
     return (
@@ -75,12 +80,15 @@ function Shell() {
           <h1><Palmtree size={20} /> {state.trip.name}</h1>
           <p className="app-sub">{tripSubtitle(state.trip, state.people.length)}</p>
         </div>
-        <button className="identity-btn" onClick={() => setMe(null)}>
-          <Avatar name={person.name} size="sm" className="avatar-glass" />
-          <span className="identity-name">{first}</span>
-          <span className="sr-only"> · changer</span>
-          <ChevronDown size={16} />
-        </button>
+        <div className="header-actions">
+          <button className="icon-btn header-help" aria-label="Revoir le tuto" onClick={() => setTuto(true)}><CircleHelp size={22} /></button>
+          <button className="identity-btn" onClick={() => setMe(null)}>
+            <Avatar name={person.name} size="sm" className="avatar-glass" />
+            <span className="identity-name">{first}</span>
+            <span className="sr-only"> · changer</span>
+            <ChevronDown size={16} />
+          </button>
+        </div>
       </header>
       {!online && <OfflineBanner />}
       <main className="app-main">
@@ -90,6 +98,7 @@ function Shell() {
       </main>
       <BottomNav tab={tab} onChange={setTab} />
       <Toasts />
+      {tuto && <Onboarding onClose={closeTuto} />}
     </div>
   );
 }
@@ -105,7 +114,7 @@ export function App() {
   if (!code) return <InvalidLink />;
   return (
     <TripProvider key={code} code={code}>
-      <Shell />
+      <Shell code={code} />
     </TripProvider>
   );
 }
