@@ -5,6 +5,7 @@ import { rosterAt, teamCovers } from '../../domain/teams';
 import { teamIncludedNight } from '../../domain/conflicts';
 import { BOAT_CATEGORY } from '../../domain/expenses';
 import { formatEuros } from '../../lib/format';
+import { isValidUrl } from '../../domain/validation';
 import { usePlanning } from './PlanningContext';
 
 export function NightCell({ team, night }: { team: Team; night: string }) {
@@ -24,7 +25,7 @@ export function NightCell({ team, night }: { team: Team; night: string }) {
   const label = chosen
     ? `Nuit à ${chosen.place_name || 'logement'}${price}`
     : options.length ? `${options.length} option(s) de logement — à choisir` : '+ Logement';
-  const link = chosen?.links[0];
+  const link = chosen?.links.find(l => isValidUrl(l.url));
   return (
     <div className={`night ${chosen ? '' : 'empty'} ${missing ? 'warn' : ''}`}>
       <button type="button" className="night-btn" onClick={() => openSheet({ kind: 'stay', teamId: team.id, night })}>🌙 {label}</button>

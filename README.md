@@ -29,4 +29,10 @@ Migrations dans `supabase/migrations/` (à appliquer dans l'ordre), données ini
 
 ## Déploiement
 
-Chaque push sur `main` lance les tests, le build et la publication sur GitHub Pages (`.github/workflows/deploy.yml`). Secrets du dépôt requis : `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+Chaque push sur `main` lance les tests, le build et la publication sur GitHub Pages (`.github/workflows/deploy.yml`).
+
+Prérequis :
+- le dépôt doit s'appeler exactement `martinique-2027` (c'est le `base` de `vite.config.ts`) ;
+- *Settings → Pages → Source* : **GitHub Actions** ;
+- secrets du dépôt : `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` ;
+- Supabase → Realtime : laisser l'accès public aux canaux activé (valeur par défaut), sinon la synchro en direct s'arrête.

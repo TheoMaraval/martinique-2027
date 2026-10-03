@@ -3,10 +3,12 @@ import type { Link } from '../domain/types';
 import { isValidUrl } from '../domain/validation';
 
 export function LinkList({ links }: { links: Link[] }) {
-  if (!links.length) return null;
+  // Les liens viennent de la base partagée : on n'affiche que des URL http(s).
+  const safe = links.filter(l => isValidUrl(l.url));
+  if (!safe.length) return null;
   return (
     <ul className="link-list">
-      {links.map((l, i) => (
+      {safe.map((l, i) => (
         <li key={i}><a href={l.url} target="_blank" rel="noreferrer noopener">🔗 {l.label}</a></li>
       ))}
     </ul>
@@ -33,7 +35,7 @@ export function LinksEditor({ links, onChange }: { links: Link[]; onChange: (lin
       <ul>
         {links.map((l, i) => (
           <li key={i}>
-            <a href={l.url} target="_blank" rel="noreferrer noopener">🔗 {l.label}</a>
+            {isValidUrl(l.url) ? <a href={l.url} target="_blank" rel="noreferrer noopener">🔗 {l.label}</a> : <span>{l.label}</span>}
             <button type="button" className="icon-btn" aria-label={`Retirer ${l.label}`} onClick={() => onChange(links.filter((_, j) => j !== i))}>×</button>
           </li>
         ))}
