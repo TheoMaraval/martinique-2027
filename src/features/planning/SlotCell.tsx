@@ -1,4 +1,5 @@
 import { useDroppable } from '@dnd-kit/core';
+import { Plus } from 'lucide-react';
 import { useReadyTrip } from '../../data/TripContext';
 import type { Team } from '../../domain/types';
 import { PART_LABEL, buildSlots } from '../../domain/slots';
@@ -21,7 +22,7 @@ export function SlotCell({ team, idx }: { team: Team; idx: number }) {
       {!slot.plannable && <span className="muted">{slot.blockedLabel}</span>}
       {events.map(e => <EventTile key={e.id} event={e} idx={idx} />)}
       {enabled && (
-        <button className="add-btn" aria-label={`Ajouter une activité (${PART_LABEL[slot.part]})`} onClick={() => openSheet({ kind: 'quick', teamId: team.id, idx })}>+</button>
+        <button className="add-btn" aria-label={`Ajouter une activité (${PART_LABEL[slot.part]})`} onClick={() => openSheet({ kind: 'quick', teamId: team.id, idx })}><Plus size={18} /></button>
       )}
     </div>
   );

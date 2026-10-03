@@ -13,7 +13,8 @@ it('met en avant les activités non placées les plus suggérées', () => {
     wishes: [w('1', 'p1', 'surf', 'half'), w('2', 'p2', 'surf', 'half'), w('3', 'p3', 'surf', 'half'), w('4', 'p1', 'rando', 'half', 2)],
   });
   renderWithTrip(<DndContext><UnplacedPanel /></DndContext>, { state });
-  expect(screen.getByText('À placer (3)', { exact: false })).toBeInTheDocument();
+  // Le compteur est désormais une pastille à côté de « À placer ».
+  expect(screen.getByRole('button', { name: /^À placer\s*3$/ })).toBeInTheDocument();
   const hot = screen.getByText('Suggérée par 3').closest('li')!;
   expect(hot).toHaveClass('hot');
   expect(hot).toHaveTextContent('Théo, Jules, Inès');

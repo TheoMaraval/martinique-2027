@@ -24,7 +24,7 @@ describe('StaySheet', () => {
 
   it('propose une nouvelle option de logement', async () => {
     const { actions } = renderWithTrip(<StaySheet teamId="all" night="2027-04-16" onClose={vi.fn()} />, { state });
-    await userEvent.click(screen.getByRole('button', { name: '+ Proposer un logement' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Proposer un logement' }));
     await userEvent.type(screen.getByLabelText('Nom du lieu'), 'Villa C');
     await userEvent.click(screen.getByRole('button', { name: "Enregistrer l'option" }));
     expect(actions.saveStay).toHaveBeenCalledWith(expect.objectContaining({ place_name: 'Villa C', team_id: 'all', night_date: '2027-04-16' }));

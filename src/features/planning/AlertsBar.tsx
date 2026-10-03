@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ChevronDown, ChevronRight, TriangleAlert } from 'lucide-react';
 import { useReadyTrip } from '../../data/TripContext';
 import { firstName, formatDay } from '../../lib/format';
 import { usePlanning } from './PlanningContext';
@@ -20,7 +21,9 @@ export function AlertsBar() {
   return (
     <section className="alerts">
       <button onClick={() => setOpen(o => !o)} aria-expanded={open}>
-        ⚠️ {conflicts.length} conflit(s) · {noStay.size} nuit(s) sans logement pour tout le monde {open ? '▾' : '▸'}
+        <TriangleAlert size={20} className="alerts-icon" />
+        <span className="alerts-text">{conflicts.length} conflit(s) · {noStay.size} nuit(s) sans logement pour tout le monde</span>
+        {open ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
       </button>
       {open && (
         <ul>

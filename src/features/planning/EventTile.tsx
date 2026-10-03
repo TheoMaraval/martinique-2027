@@ -1,4 +1,5 @@
 import { useDraggable } from '@dnd-kit/core';
+import { Link2, MessageCircle } from 'lucide-react';
 import { useReadyTrip } from '../../data/TripContext';
 import type { TripEvent } from '../../domain/types';
 import { durationLabel } from '../../domain/durations';
@@ -21,14 +22,14 @@ export function EventTile({ event, idx }: { event: TripEvent; idx: number }) {
       className={`tile ${isStart ? '' : 'cont'} ${warn ? 'warn' : ''} ${isDragging ? 'dragging' : ''}`}
       onClick={() => openSheet({ kind: 'event', id: event.id })}
     >
-      <strong>{activity?.name ?? 'Activité'}{!isStart && <span className="muted"> (suite)</span>}</strong>
+      <strong className="tile-title">{activity?.name ?? 'Activité'}{!isStart && <span className="muted"> (suite)</span>}</strong>
       <span className="tile-meta">
         {durationLabel(event.duration)} · {count} pers.{event.place_name ? ` · ${event.place_name}` : ''}
       </span>
       {(event.links.length > 0 || comments > 0) && (
         <span className="tile-icons">
-          {event.links.length > 0 && <span aria-label={`${event.links.length} lien(s)`}>🔗 {event.links.length}</span>}
-          {comments > 0 && <span aria-label={`${comments} commentaire(s)`}>💬 {comments}</span>}
+          {event.links.length > 0 && <span aria-label={`${event.links.length} lien(s)`}><Link2 size={14} /> {event.links.length}</span>}
+          {comments > 0 && <span aria-label={`${comments} commentaire(s)`}><MessageCircle size={14} /> {comments}</span>}
         </span>
       )}
     </button>

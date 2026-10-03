@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Plus } from 'lucide-react';
 import { useReadyTrip } from '../../data/TripContext';
 import type { Stay, TripState } from '../../domain/types';
 import { slotIndex } from '../../domain/slots';
@@ -80,7 +81,7 @@ export function StaySheet({ teamId, night, onClose }: { teamId: string; night: s
           </div>
         </div>
       ) : (
-        <button className="wide" onClick={() => setEditing(emptyOption(state, teamId, night))}>+ Proposer un logement</button>
+        <button className="wide" onClick={() => setEditing(emptyOption(state, teamId, night))}><Plus size={18} /> Proposer un logement</button>
       )}
     </Sheet>
   );

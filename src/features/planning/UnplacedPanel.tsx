@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { ChevronDown, ChevronUp, GripVertical, Plus } from 'lucide-react';
 import { useReadyTrip } from '../../data/TripContext';
 import { unplacedItems, type UnplacedItem } from '../../domain/unplaced';
 import { durationLabel } from '../../domain/durations';
@@ -27,6 +28,7 @@ function UnplacedChip({ item }: { item: UnplacedItem }) {
         }
       }}
     >
+      <span className="grip" aria-hidden="true"><GripVertical size={18} /></span>
       <strong>{item.activity.name}{item.activity.has_quantity ? ` n°${item.occurrence}` : ''}</strong>
       <span className="badge">Suggérée par {n}</span>
       <span className="muted">{durationLabel(item.duration)}</span>
@@ -43,9 +45,12 @@ export function UnplacedPanel() {
   // Déposer ici = annuler le glisser-déposer.
   const { setNodeRef } = useDroppable({ id: 'cancel', data: { type: 'cancel' } });
   return (
-    <aside ref={setNodeRef} className="unplaced" aria-label="Activités à placer">
+    <aside ref={setNodeRef} className={`unplaced ${open ? 'open' : 'closed'}`} aria-label="Activités à placer">
+      <span className="unplaced-grip" aria-hidden="true" />
       <button className="unplaced-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open}>
-        À placer ({items.length}) {open ? '▾' : '▴'}
+        <span className="unplaced-title">À placer</span>
+        <span className="count-pill">{items.length}</span>
+        <span className="unplaced-chevron">{open ? <ChevronDown size={20} /> : <ChevronUp size={20} />}</span>
       </button>
       {open && (
         <>
@@ -57,7 +62,7 @@ export function UnplacedPanel() {
               <ul>{items.map(it => <UnplacedChip key={it.key} item={it} />)}</ul>
             </>
           )}
-          <button className="wide" onClick={() => openSheet({ kind: 'suggest' })}>+ Suggérer une nouvelle activité</button>
+          <button className="wide" onClick={() => openSheet({ kind: 'suggest' })}><Plus size={18} /> Suggérer une nouvelle activité</button>
         </>
       )}
     </aside>

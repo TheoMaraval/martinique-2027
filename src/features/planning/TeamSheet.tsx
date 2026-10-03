@@ -10,7 +10,7 @@ import { Sheet } from '../../ui/Sheet';
 import { Field } from '../../ui/Field';
 import { PeoplePicker } from '../../ui/PeoplePicker';
 
-export const TEAM_COLORS = ['#ff6f59', '#7c3aed', '#16a34a', '#d97706', '#db2777', '#2563eb'];
+export const TEAM_COLORS = ['#D9472B', '#6D28D9', '#15803D', '#B45309', '#BE185D', '#1D4ED8'];
 
 export function TeamSheet({ teamId, onClose }: { teamId: string | null; onClose: () => void }) {
   const { state, actions } = useReadyTrip();
@@ -52,10 +52,10 @@ export function TeamSheet({ teamId, onClose }: { teamId: string | null; onClose:
         <input aria-label="Nom de l'équipe" value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
       </Field>
       <Field label="Couleur">
-        <div className="row">
+        <div className="row swatches">
           {TEAM_COLORS.map(c => (
             <button key={c} type="button" aria-label={`Couleur ${c}`} aria-pressed={draft.color === c}
-              style={{ background: c, width: 32, height: 32, outline: draft.color === c ? '3px solid #1f2d3a' : 'none' }}
+              className="swatch" style={{ background: c }}
               onClick={() => setDraft(d => ({ ...d, color: c }))} />
           ))}
         </div>

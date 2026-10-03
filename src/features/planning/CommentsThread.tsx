@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Send, X } from 'lucide-react';
+import { Avatar } from '../../ui/Avatar';
 import { useReadyTrip } from '../../data/TripContext';
 import { firstName, formatDateTime } from '../../lib/format';
 import { newId } from '../../lib/ids';
@@ -22,10 +24,11 @@ export function CommentsThread({ eventId }: { eventId: string }) {
         {comments.map(c => (
           <li key={c.id}>
             <div className="comment-head">
+              <Avatar name={state.people.find(p => p.id === c.author_id)?.name ?? '?'} size="xs" />
               <strong>{firstName(state.people.find(p => p.id === c.author_id)?.name ?? '?')}</strong>
               <span className="muted">{formatDateTime(c.created_at)}</span>
               {c.author_id === me && (
-                <button className="icon-btn" aria-label="Supprimer le commentaire" onClick={() => void actions.deleteComment(c.id)}>×</button>
+                <button className="icon-btn" aria-label="Supprimer le commentaire" onClick={() => void actions.deleteComment(c.id)}><X size={18} /></button>
               )}
             </div>
             <p>{c.body}</p>
@@ -34,7 +37,7 @@ export function CommentsThread({ eventId }: { eventId: string }) {
       </ul>
       <div className="row">
         <textarea aria-label="Nouveau commentaire" rows={2} maxLength={2000} placeholder="Écrire un commentaire…" value={body} onChange={e => setBody(e.target.value)} />
-        <button type="button" onClick={send} disabled={!body.trim()}>Envoyer</button>
+        <button type="button" onClick={send} disabled={!body.trim()} className="primary"><Send size={16} /> Envoyer</button>
       </div>
     </div>
   );

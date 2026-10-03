@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import { useReadyTrip } from '../../data/TripContext';
 import { membersOf } from '../../domain/teams';
 import { usePlanning } from './PlanningContext';
@@ -12,7 +13,7 @@ export function TeamsBar() {
           {t.name} · {membersOf(state, t.id).length} pers.
         </button>
       ))}
-      <button className="team-chip add" onClick={() => openSheet({ kind: 'team', id: null })}>+ Équipe</button>
+      <button className="team-chip add" onClick={() => openSheet({ kind: 'team', id: null })}><Plus size={18} /> Équipe</button>
     </div>
   );
 }

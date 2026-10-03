@@ -1,3 +1,4 @@
+import { ExternalLink, Moon, Plus, Ship } from 'lucide-react';
 import { useReadyTrip } from '../../data/TripContext';
 import type { Team } from '../../domain/types';
 import { slotIndex } from '../../domain/slots';
@@ -16,7 +17,8 @@ export function NightCell({ team, night }: { team: Team; night: string }) {
   const included = teamIncludedNight(state, team.id, night);
   if (included) {
     const a = state.activities.find(x => x.id === included.activity_id);
-    return <div className="night included">🌙 {a?.category === BOAT_CATEGORY ? 'À bord' : `Inclus : ${a?.name ?? ''}`}</div>;
+    const boat = a?.category === BOAT_CATEGORY;
+    return <div className="night included">{boat ? <Ship size={18} /> : <Moon size={18} />} {boat ? 'À bord' : `Inclus : ${a?.name ?? ''}`}</div>;
   }
   const options = state.stays.filter(st => st.team_id === team.id && st.night_date === night);
   const chosen = options.find(o => o.chosen);
@@ -24,12 +26,12 @@ export function NightCell({ team, night }: { team: Team; night: string }) {
   const price = chosen?.price != null ? ` · ${formatEuros(chosen.price)}${chosen.price_mode === 'per_person' ? '/pers.' : ''}` : '';
   const label = chosen
     ? `Nuit à ${chosen.place_name || 'logement'}${price}`
-    : options.length ? `${options.length} option(s) de logement — à choisir` : '+ Logement';
+    : options.length ? `${options.length} option(s) de logement — à choisir` : 'Logement';
   const link = chosen?.links.find(l => isValidUrl(l.url));
   return (
     <div className={`night ${chosen ? '' : 'empty'} ${missing ? 'warn' : ''}`}>
-      <button type="button" className="night-btn" onClick={() => openSheet({ kind: 'stay', teamId: team.id, night })}>🌙 {label}</button>
-      {link && <a href={link.url} target="_blank" rel="noreferrer noopener" aria-label={`Voir le logement : ${link.label}`}>🔗</a>}
+      <button type="button" className="night-btn" onClick={() => openSheet({ kind: 'stay', teamId: team.id, night })}>{chosen || options.length ? <Moon size={18} /> : <Plus size={18} />} <span>{label}</span></button>
+      {link && <a href={link.url} target="_blank" rel="noreferrer noopener" aria-label={`Voir le logement : ${link.label}`} className="night-link"><ExternalLink size={18} /></a>}
     </div>
   );
 }
