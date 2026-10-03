@@ -34,5 +34,5 @@ Chaque push sur `main` lance les tests, le build et la publication sur GitHub Pa
 Prérequis :
 - le dépôt doit s'appeler exactement `martinique-2027` (c'est le `base` de `vite.config.ts`) ;
 - *Settings → Pages → Source* : **GitHub Actions** ;
-- secrets du dépôt : `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` ;
+- l'URL et la clé publishable Supabase sont dans `.env.production` (valeurs publiques par conception) ;
 - Supabase → Realtime : laisser l'accès public aux canaux activé (valeur par défaut), sinon la synchro en direct s'arrête.
