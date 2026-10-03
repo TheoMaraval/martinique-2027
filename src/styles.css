@@ -57,7 +57,8 @@ h2 { font-size: 1.1rem; }
 .links-editor li { display: flex; justify-content: space-between; align-items: center; }
 .links-editor .row { flex-wrap: wrap; }
 /* Planning */
-.planning { display: grid; gap: 12px; padding-bottom: 45vh; }
+.planning { display: grid; gap: 12px; padding-bottom: 45vh; grid-template-columns: minmax(0, 1fr); }
+.planning > * { min-width: 0; }
 .teams-bar { display: flex; flex-wrap: wrap; gap: 8px; }
 .team-chip { color: #fff; border: 0; }
 .team-chip.add { color: var(--sea-dark); background: #fff; border: 1px dashed var(--sea); }
@@ -99,7 +100,7 @@ h2 { font-size: 1.1rem; }
 .unplaced-item .names { grid-column: 1 / -1; font-size: .8rem; color: var(--muted); }
 .unplaced-item.dragging { opacity: .4; }
 @media (min-width: 900px) {
-  .planning { grid-template-columns: 1fr 300px; padding-bottom: 0; }
+  .planning { grid-template-columns: minmax(0, 1fr) 300px; padding-bottom: 0; }
   .planning > :not(.unplaced) { grid-column: 1; }
   .planning > .unplaced { position: sticky; top: 64px; grid-column: 2; grid-row: 1 / span 4; max-height: calc(100vh - 140px); border: 1px solid var(--line); border-top: 2px solid var(--coral); border-radius: var(--radius); box-shadow: none; align-self: start; }
 }
