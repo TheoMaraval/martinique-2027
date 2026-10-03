@@ -34,7 +34,7 @@ describe('AddActivityForm finitions', () => {
     await userEvent.click(screen.getByLabelText('Soir'));
     await userEvent.click(screen.getByLabelText('Demi-journée'));
     await userEvent.click(screen.getByRole('button', { name: "Ajouter l'activité" }));
-    const [a, w] = actions.saveActivity.mock.calls[0];
+    const [a, w] = vi.mocked(actions.saveActivity).mock.calls[0];
     expect(a.category).toBe('Mer');
     expect(a.durations).toEqual(['half', 'evening']);
     expect(w.duration).toBe('half');
