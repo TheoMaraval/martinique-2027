@@ -209,6 +209,7 @@ begin
   delete from stays where id = p_id and trip_id = v;
 end $$;
 
+-- Rappel : Supabase donne EXECUTE à anon sur toute nouvelle fonction ; chaque migration doit refaire ce revoke/grant.
 revoke execute on all functions in schema public from public, anon, authenticated;
 grant execute on function
   get_trip(text), set_budget(text, uuid, numeric),

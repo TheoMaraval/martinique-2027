@@ -23,13 +23,14 @@ function InvalidLink() {
 }
 
 function Shell() {
-  const { status, state, me, setMe, online } = useTrip();
+  const { status, state, me, setMe, online, retry } = useTrip();
   const [tab, setTab] = useState<Tab>('envies');
   if (status === 'invalid') return <InvalidLink />;
   if (!state) {
     return (
       <main className="center-page">
         <p>{status === 'error' ? 'Impossible de charger le voyage. Vérifie ta connexion.' : 'Chargement…'}</p>
+        {status === 'error' && <button className="primary" onClick={retry}>Réessayer</button>}
       </main>
     );
   }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { InvalidCodeError, errorMessage, makeApi } from './api';
@@ -18,7 +18,12 @@ export function TripProvider({ code, children }: { code: string; children: React
   const channelRef = useRef<RealtimeChannel | null>(null);
   const wasOffline = useRef(false);
   const meRef = useRef(me);
-  meRef.current = me;
+  useLayoutEffect(() => {
+    meRef.current = me;
+  });
+  const reloadSeq = useRef(0);
+  const pending = useRef(0);
+  const stale = useRef(false);
 
   const pushToast = useCallback((text: string) => {
     const id = newId();
@@ -27,10 +32,18 @@ export function TripProvider({ code, children }: { code: string; children: React
   }, []);
 
   const reload = useCallback(async () => {
+    const seq = ++reloadSeq.current;
     try {
-      setState(await api.getTrip());
+      const data = await api.getTrip();
+      if (seq !== reloadSeq.current) return;
+      if (pending.current > 0) {
+        stale.current = true;
+        return;
+      }
+      setState(data);
       setStatus('ready');
     } catch (e) {
+      if (seq !== reloadSeq.current) return;
       if (e instanceof InvalidCodeError) setStatus('invalid');
       else {
         setStatus(s => (s === 'ready' ? 'ready' : 'error'));
@@ -44,12 +57,15 @@ export function TripProvider({ code, children }: { code: string; children: React
   }, [reload]);
 
   useEffect(() => {
+    let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const ch = supabase.channel(`trip-${code}`, { config: { broadcast: { self: false } } });
     ch.on('broadcast', { event: 'changed' }, () => {
+      if (!active) return;
       clearTimeout(timer);
       timer = setTimeout(() => void reload(), 300);
     }).subscribe(s => {
+      if (!active) return;
       if (s === 'SUBSCRIBED') {
         setOnline(true);
         if (wasOffline.current) void reload();
@@ -61,6 +77,7 @@ export function TripProvider({ code, children }: { code: string; children: React
     });
     channelRef.current = ch;
     return () => {
+      active = false;
       clearTimeout(timer);
       void supabase.removeChannel(ch);
     };
@@ -68,13 +85,20 @@ export function TripProvider({ code, children }: { code: string; children: React
 
   const mutate = useCallback(
     async (local: (s: TripState) => TripState, remote: () => Promise<unknown>) => {
+      pending.current++;
       setState(s => (s ? local(s) : s));
       try {
         await remote();
         void channelRef.current?.send({ type: 'broadcast', event: 'changed', payload: {} });
       } catch (e) {
         pushToast(errorMessage(e));
-        await reload();
+        stale.current = true;
+      } finally {
+        pending.current--;
+        if (pending.current === 0 && stale.current) {
+          stale.current = false;
+          void reload();
+        }
       }
     },
     [pushToast, reload],
@@ -167,7 +191,15 @@ export function TripProvider({ code, children }: { code: string; children: React
         stays: s.stays.map(x => (x.team_id === target.team_id && x.night_date === target.night_date ? { ...x, chosen: x.id === id } : x)),
       };
     }, () => api.chooseStay(id)),
-    deleteStay: id => mutate(s => ({ ...s, stays: s.stays.filter(st => st.id !== id) }), () => api.deleteStay(id)),
+    deleteStay: id => mutate(s => {
+      const target = s.stays.find(st => st.id === id);
+      let stays = s.stays.filter(st => st.id !== id);
+      if (target?.chosen) {
+        const next = stays.find(x => x.team_id === target.team_id && x.night_date === target.night_date);
+        if (next) stays = stays.map(x => (x.id === next.id ? { ...x, chosen: true } : x));
+      }
+      return { ...s, stays };
+    }, () => api.deleteStay(id)),
   }), [api, mutate]);
 
   const setMe = useCallback((id: string | null) => {
@@ -177,8 +209,15 @@ export function TripProvider({ code, children }: { code: string; children: React
 
   const dismissToast = useCallback((id: string) => setToasts(t => t.filter(x => x.id !== id)), []);
 
+  const retry = useCallback(() => void reload(), [reload]);
+
+  const value = useMemo(
+    () => ({ status, state, online, me, setMe, toasts, dismissToast, actions, retry }),
+    [status, state, online, me, setMe, toasts, dismissToast, actions, retry],
+  );
+
   return (
-    <TripContext.Provider value={{ status, state, online, me, setMe, toasts, dismissToast, actions }}>
+    <TripContext.Provider value={value}>
       {children}
     </TripContext.Provider>
   );

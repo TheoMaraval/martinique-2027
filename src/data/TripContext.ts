@@ -31,6 +31,7 @@ export interface TripCtx {
   toasts: Toast[];
   dismissToast(id: string): void;
   actions: TripActions;
+  retry(): void;
 }
 
 export const TripContext = createContext<TripCtx | null>(null);

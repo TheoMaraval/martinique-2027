@@ -18,7 +18,7 @@ export function renderWithTrip(
   { state = makeState(), me = 'p1', actions = fakeActions() }: { state?: TripState; me?: string; actions?: TripActions } = {},
 ) {
   const value: TripCtx = {
-    status: 'ready', state, online: true, me, setMe: vi.fn(), toasts: [], dismissToast: vi.fn(), actions,
+    status: 'ready', state, online: true, me, setMe: vi.fn(), toasts: [], dismissToast: vi.fn(), actions, retry: vi.fn(),
   };
   return { ...render(<TripContext.Provider value={value}>{ui}</TripContext.Provider>), actions };
 }
