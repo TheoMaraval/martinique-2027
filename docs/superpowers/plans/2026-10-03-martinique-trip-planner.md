@@ -39,7 +39,7 @@ src/
   domain/slots.ts                  Créneaux, dates, nuits
   domain/durations.ts              Codes durée, emprise
   domain/teams.ts                  Équipes, effectifs par créneau
-  domain/unplaced.ts               Envies non placées « Suggérée par N »
+  domain/unplaced.ts               Envies non placées « Suggérée par N » + succès ×N (popularity)
   domain/placement.ts              Création d'une activité planifiée depuis une envie
   domain/conflicts.ts              Alertes (chevauchements, nuits sans logement…)
   domain/expenses.ts               Parts et dépenses par personne
@@ -59,7 +59,7 @@ src/
   features/planning/PlanningContext.ts  PlanningTab.tsx  PlanningGrid.tsx  DayColumn.tsx
   features/planning/SlotCell.tsx  EventTile.tsx  NightCell.tsx  UnplacedPanel.tsx
   features/planning/TeamsBar.tsx  AlertsBar.tsx  PlanningSheets.tsx  EventSheet.tsx
-  features/planning/CommentsThread.tsx  StaySheet.tsx  TeamSheet.tsx  QuickAddSheet.tsx  PlaceSheet.tsx
+  features/planning/CommentsThread.tsx  StaySheet.tsx  TeamSheet.tsx  QuickAddSheet.tsx  PlaceSheet.tsx  SuggestSheet.tsx
   features/roadbook/RoadbookTab.tsx  ExpensesTable.tsx  RouteMap.tsx  DayRecap.tsx
   test/setup.ts  test/fixtures.ts  test/renderWithTrip.tsx
 ```
@@ -245,6 +245,8 @@ export interface EventComment {
 export interface Stay {
   id: string; trip_id: string; team_id: string; night_date: string; place_name: string;
   lat: number | null; lng: number | null; price: number | null; price_mode: PriceMode; links: Link[]; notes: string;
+  /** Plusieurs options par (équipe, nuit) ; une seule retenue. */
+  chosen: boolean;
 }
 export interface TripState {
   trip: Trip; people: Person[]; activities: Activity[]; wishes: Wish[]; teams: Team[];
@@ -283,7 +285,7 @@ export function makeEvent(
 export function makeStay(p: Partial<Stay> & Pick<Stay, 'id' | 'night_date'>): Stay {
   return {
     trip_id: 'trip', team_id: 'all', place_name: '', lat: null, lng: null,
-    price: null, price_mode: 'total', links: [], notes: '', ...p,
+    price: null, price_mode: 'total', links: [], notes: '', chosen: true, ...p,
   };
 }
 
@@ -760,7 +762,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - [ ] **Step 1: Écrire le test**
 
 ```ts
-import { unplacedItems } from './unplaced';
+import { popularity, unplacedItems } from './unplaced';
 import { makeEvent, makeState } from '../test/fixtures';
 import type { Wish } from './types';
 
@@ -773,21 +775,31 @@ const wishes = [
   wish('w6', 'p4', 'boat', 'multi:4:3'),
 ];
 
+describe('popularity', () => {
+  it('compte les personnes distinctes par activité (×N)', () => {
+    const extra = [...wishes, wish('w7', 'p1', 'rando', 'day')];
+    const pop = popularity(makeState({ wishes: extra }));
+    expect(pop.get('surf')).toBe(3);
+    expect(pop.get('rando')).toBe(2);
+    expect(pop.get('boat')).toBe(1);
+  });
+});
+
 describe('unplacedItems', () => {
-  it('groupe, éclate les quantités et trie par nombre de suggestions', () => {
+  it('groupe, éclate les quantités et trie par suggestions puis par succès ×N', () => {
     const items = unplacedItems(makeState({ wishes }));
     expect(items.map(i => [i.activity.id, i.occurrence, i.personIds])).toEqual([
       ['surf', 1, ['p1', 'p2', 'p3']],
       ['rando', 1, ['p1', 'p2']],
-      ['boat', 1, ['p4']],
       ['rando', 2, ['p1']],
+      ['boat', 1, ['p4']],
     ]);
   });
 
   it('retire les éléments déjà placés', () => {
     const events = [makeEvent({ id: 'e1', activity_id: 'rando', duration: 'half', occurrence: 1, start_date: '2027-04-16', start_part: 'matin' })];
     const items = unplacedItems(makeState({ wishes, events }));
-    expect(items.map(i => `${i.activity.id}#${i.occurrence}`)).toEqual(['surf#1', 'boat#1', 'rando#2']);
+    expect(items.map(i => `${i.activity.id}#${i.occurrence}`)).toEqual(['surf#1', 'rando#2', 'boat#1']);
   });
 
   it('ignore la quantité si l’activité n’en a pas', () => {
@@ -814,6 +826,13 @@ export interface UnplacedItem {
 export const placementKey = (activityId: string, duration: DurationKey, occurrence: number) =>
   `${activityId}|${duration}|${occurrence}`;
 
+/** Multiplicateur de succès ×N : nombre de personnes distinctes ayant suggéré l'activité (toutes durées). */
+export function popularity(s: TripState): Map<string, number> {
+  const people = new Map<string, Set<string>>();
+  for (const w of s.wishes) people.set(w.activity_id, (people.get(w.activity_id) ?? new Set<string>()).add(w.person_id));
+  return new Map([...people].map(([id, set]) => [id, set.size]));
+}
+
 export function unplacedItems(s: TripState): UnplacedItem[] {
   const groups = new Map<string, Wish[]>();
   for (const w of s.wishes) {
@@ -836,9 +855,11 @@ export function unplacedItems(s: TripState): UnplacedItem[] {
       });
     }
   }
+  const pop = popularity(s);
   return items.sort(
     (a, b) =>
       b.personIds.length - a.personIds.length ||
+      (pop.get(b.activity.id) ?? 0) - (pop.get(a.activity.id) ?? 0) ||
       a.activity.name.localeCompare(b.activity.name, 'fr') ||
       a.occurrence - b.occurrence,
   );
@@ -848,7 +869,7 @@ export function unplacedItems(s: TripState): UnplacedItem[] {
 - [ ] **Step 4: Lancer le test (succès attendu)**
 
 Run: `npx vitest run src/domain/unplaced.test.ts`
-Expected: PASS (3 tests).
+Expected: PASS (4 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -1008,7 +1029,7 @@ describe('computeAlerts', () => {
     const s = makeState({
       teams: [...makeState().teams, bt],
       team_members: members('bt', ['p1']),
-      stays: [makeStay({ id: 's1', night_date: '2027-04-15' })],
+      stays: [makeStay({ id: 's1', night_date: '2027-04-15' }), makeStay({ id: 'opt', night_date: '2027-04-16', chosen: false })],
       events: [makeEvent({ id: 'b', team_id: 'bt', activity_id: 'boat', duration: 'multi:4:3', start_date: '2027-04-17', start_part: 'matin' })],
       event_participants: participants('b', ['p1']),
     });
@@ -1060,7 +1081,7 @@ export function teamIncludedNight(s: TripState, teamId: string, night: string): 
 
 export function stayFor(s: TripState, personId: string, night: string): Stay | undefined {
   const teamIds = effectiveTeamIds(s, personId, slotIndex(s.trip, night, 'soir'));
-  return s.stays.find(st => st.night_date === night && teamIds.includes(st.team_id));
+  return s.stays.find(st => st.chosen && st.night_date === night && teamIds.includes(st.team_id));
 }
 
 export function computeAlerts(s: TripState): Alert[] {
@@ -1141,7 +1162,10 @@ describe('expensesByPerson', () => {
         makeEvent({ id: 's', activity_id: 'surf', duration: 'half', start_date: '2027-04-16', start_part: 'matin', price: 45, price_mode: 'per_person' }),
       ],
       event_participants: [...participants('b', ['p1', 'p2', 'p3', 'p4']), ...participants('s', ['p1'])],
-      stays: [makeStay({ id: 'st', night_date: '2027-04-15', price: 1000, price_mode: 'total' })],
+      stays: [
+        makeStay({ id: 'st', night_date: '2027-04-15', price: 1000, price_mode: 'total' }),
+        makeStay({ id: 'opt', night_date: '2027-04-15', price: 5000, price_mode: 'total', chosen: false }),
+      ],
     });
     const rows = expensesByPerson(s);
     expect(rows.find(r => r.personId === 'p1')).toEqual({
@@ -1190,7 +1214,7 @@ export function expensesByPerson(s: TripState): PersonExpense[] {
       if (row) isBoat ? (row.boat += amount) : (row.activities += amount);
     }
   }
-  for (const st of s.stays) {
+  for (const st of s.stays.filter(x => x.chosen)) {
     const ps = rosterAt(s, st.team_id, slotIndex(s.trip, st.night_date, 'soir'));
     const amount = shareOf(st.price, st.price_mode, ps.length);
     for (const p of ps) {
@@ -1333,7 +1357,10 @@ const s = makeState({
     makeEvent({ id: 'e2', team_id: 'bt', activity_id: 'boat', duration: 'multi:4:3', start_date: '2027-04-17', start_part: 'matin', lat: 14.4, lng: -60.9 }),
   ],
   event_participants: [...participants('e1', ['p1', 'p2']), ...participants('e2', ['p3'])],
-  stays: [makeStay({ id: 'st1', night_date: '2027-04-16', lat: 14.6, lng: -61.1, place_name: 'Gîte Trinité' })],
+  stays: [
+    makeStay({ id: 'st1', night_date: '2027-04-16', lat: 14.6, lng: -61.1, place_name: 'Gîte Trinité' }),
+    makeStay({ id: 'opt', night_date: '2027-04-16', lat: 14.7, lng: -61.2, place_name: 'Villa (option)', chosen: false }),
+  ],
 });
 
 describe('itinerary', () => {
@@ -1402,7 +1429,7 @@ export function itinerary(s: TripState, personId: string | null): DayPlan[] {
         if (nights.has(date)) {
           const nightRoster = rosterAt(s, team.id, dayIdx[2]);
           if (!personId || nightRoster.includes(personId)) {
-            stay = s.stays.find(st => st.team_id === team.id && st.night_date === date);
+            stay = s.stays.find(st => st.chosen && st.team_id === team.id && st.night_date === date);
           }
           const inc = teamIncludedNight(s, team.id, date);
           if (inc && (!personId || participantsOf(s, inc.id).includes(personId))) includedBy = inc;
@@ -1570,8 +1597,11 @@ create table stays (
   price_mode text not null default 'total' check (price_mode in ('total', 'per_person')),
   links jsonb not null default '[]',
   notes text not null default '',
-  unique (team_id, night_date)
+  chosen boolean not null default false
 );
+
+-- Plusieurs options de logement par (équipe, nuit), au plus une retenue.
+create unique index stays_one_chosen on stays (team_id, night_date) where chosen;
 
 -- Accès direct interdit : tout passe par les RPC security definer (0002_rpc.sql).
 alter table trips enable row level security;
@@ -1771,16 +1801,28 @@ begin
   if not exists (select 1 from teams where id = (p->>'team_id')::uuid and trip_id = v) then
     raise exception 'forbidden';
   end if;
-  insert into stays (id, trip_id, team_id, night_date, place_name, lat, lng, price, price_mode, links, notes)
+  -- La première option proposée pour (équipe, nuit) est retenue par défaut.
+  insert into stays (id, trip_id, team_id, night_date, place_name, lat, lng, price, price_mode, links, notes, chosen)
   values (
     (p->>'id')::uuid, v, (p->>'team_id')::uuid, (p->>'night_date')::date, coalesce(p->>'place_name', ''),
     (p->>'lat')::float8, (p->>'lng')::float8, (p->>'price')::numeric, coalesce(p->>'price_mode', 'total'),
-    coalesce(p->'links', '[]'::jsonb), coalesce(p->>'notes', '')
+    coalesce(p->'links', '[]'::jsonb), coalesce(p->>'notes', ''),
+    not exists (select 1 from stays where team_id = (p->>'team_id')::uuid and night_date = (p->>'night_date')::date)
   )
   on conflict (id) do update set
     place_name = excluded.place_name, lat = excluded.lat, lng = excluded.lng, price = excluded.price,
     price_mode = excluded.price_mode, links = excluded.links, notes = excluded.notes
   where stays.trip_id = v;
+end $$;
+
+create or replace function choose_stay(p_code text, p_id uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare v uuid := trip_id_for(p_code); v_team uuid; v_night date;
+begin
+  select team_id, night_date into v_team, v_night from stays where id = p_id and trip_id = v;
+  if v_team is null then raise exception 'forbidden'; end if;
+  update stays set chosen = false where team_id = v_team and night_date = v_night and chosen;
+  update stays set chosen = true where id = p_id;
 end $$;
 
 create or replace function delete_stay(p_code text, p_id uuid) returns void
@@ -1798,7 +1840,7 @@ grant execute on function
   upsert_team(text, jsonb), delete_team(text, uuid), set_team_members(text, uuid, uuid[]),
   upsert_event(text, jsonb), delete_event(text, uuid), set_event_participants(text, uuid, uuid[]),
   add_comment(text, jsonb), delete_comment(text, uuid, uuid),
-  upsert_stay(text, jsonb), delete_stay(text, uuid)
+  upsert_stay(text, jsonb), choose_stay(text, uuid), delete_stay(text, uuid)
 to anon, authenticated;
 ```
 
@@ -1992,6 +2034,7 @@ export function makeApi(code: string) {
     addComment: (c: EventComment) => call('add_comment', { p: c }),
     deleteComment: (id: string, authorId: string) => call('delete_comment', { p_id: id, p_author: authorId }),
     upsertStay: (st: Stay) => call('upsert_stay', { p: st }),
+    chooseStay: (id: string) => call('choose_stay', { p_id: id }),
     deleteStay: (id: string) => call('delete_stay', { p_id: id }),
   };
 }
@@ -2107,7 +2150,8 @@ export interface TripActions {
   setBudget(personId: string, budget: number | null): Promise<void>;
   saveWish(w: Wish): Promise<void>;
   deleteWish(id: string): Promise<void>;
-  saveActivity(a: Activity): Promise<void>;
+  /** creatorWish : l'envie du créateur, enregistrée juste après l'activité. */
+  saveActivity(a: Activity, creatorWish?: Wish): Promise<void>;
   deleteActivity(id: string): Promise<void>;
   saveTeam(t: Team, memberIds: string[]): Promise<void>;
   deleteTeam(id: string): Promise<void>;
@@ -2116,6 +2160,7 @@ export interface TripActions {
   addComment(c: EventComment): Promise<void>;
   deleteComment(id: string): Promise<void>;
   saveStay(st: Stay): Promise<void>;
+  chooseStay(id: string): Promise<void>;
   deleteStay(id: string): Promise<void>;
 }
 
@@ -2241,7 +2286,13 @@ export function TripProvider({ code, children }: { code: string; children: React
       () => api.upsertWish(w),
     ),
     deleteWish: id => mutate(s => ({ ...s, wishes: s.wishes.filter(w => w.id !== id) }), () => api.deleteWish(id)),
-    saveActivity: a => mutate(s => ({ ...s, activities: upsertBy(s.activities, a, sameId) }), () => api.upsertActivity(a)),
+    saveActivity: (a, creatorWish) => mutate(
+      s => ({ ...s, activities: upsertBy(s.activities, a, sameId), wishes: creatorWish ? [...s.wishes, creatorWish] : s.wishes }),
+      async () => {
+        await api.upsertActivity(a);
+        if (creatorWish) await api.upsertWish(creatorWish);
+      },
+    ),
     deleteActivity: id => mutate(
       s => ({ ...s, activities: s.activities.filter(a => a.id !== id), wishes: s.wishes.filter(w => w.activity_id !== id) }),
       () => api.deleteActivity(id, meRef.current ?? ''),
@@ -2299,7 +2350,19 @@ export function TripProvider({ code, children }: { code: string; children: React
       s => ({ ...s, event_comments: s.event_comments.filter(c => c.id !== id) }),
       () => api.deleteComment(id, meRef.current ?? ''),
     ),
-    saveStay: st => mutate(s => ({ ...s, stays: upsertBy(s.stays, st, sameId) }), () => api.upsertStay(st)),
+    saveStay: st => mutate(s => {
+      const isNew = !s.stays.some(x => x.id === st.id);
+      const first = !s.stays.some(x => x.team_id === st.team_id && x.night_date === st.night_date);
+      return { ...s, stays: upsertBy(s.stays, isNew ? { ...st, chosen: first } : st, sameId) };
+    }, () => api.upsertStay(st)),
+    chooseStay: id => mutate(s => {
+      const target = s.stays.find(x => x.id === id);
+      if (!target) return s;
+      return {
+        ...s,
+        stays: s.stays.map(x => (x.team_id === target.team_id && x.night_date === target.night_date ? { ...x, chosen: x.id === id } : x)),
+      };
+    }, () => api.chooseStay(id)),
     deleteStay: id => mutate(s => ({ ...s, stays: s.stays.filter(st => st.id !== id) }), () => api.deleteStay(id)),
   }), [api, mutate]);
 
@@ -2332,7 +2395,7 @@ export function fakeActions(): TripActions {
   return {
     setBudget: fn(), saveWish: fn(), deleteWish: fn(), saveActivity: fn(), deleteActivity: fn(),
     saveTeam: fn(), deleteTeam: fn(), saveEvent: fn(), deleteEvent: fn(), addComment: fn(),
-    deleteComment: fn(), saveStay: fn(), deleteStay: fn(),
+    deleteComment: fn(), saveStay: fn(), chooseStay: fn(), deleteStay: fn(),
   };
 }
 
@@ -2577,6 +2640,11 @@ h2 { font-size: 1.1rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .chip { background: var(--sea-light); color: var(--sea-dark); border-radius: 999px; padding: 2px 8px; font-size: .8rem; }
 .icon-btn { border: 0; background: transparent; padding: 2px 6px; font-size: 1rem; }
+.pop-badge { background: var(--coral); color: #fff; border-radius: 999px; padding: 1px 8px; font-size: .8rem; font-weight: 700; white-space: nowrap; }
+.top ol { margin: 0; padding-left: 22px; display: grid; gap: 4px; }
+.stay-options { list-style: none; padding: 0; display: grid; gap: 8px; }
+.stay-option { border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: grid; gap: 4px; }
+.stay-option.chosen { border-color: var(--sea); background: var(--sea-light); }
 .wide { width: 100%; padding: 12px; }
 .field { display: grid; gap: 6px; margin: 12px 0; }
 .field-label { font-weight: 600; font-size: .9rem; }
@@ -2611,7 +2679,9 @@ h2 { font-size: 1.1rem; }
 .tile.dragging { opacity: .4; }
 .tile-meta { font-size: .8rem; color: var(--muted); }
 .tile-icons { display: flex; gap: 8px; font-size: .8rem; }
-.night { width: 100%; border: 0; border-top: 1px solid var(--line); border-radius: 0; text-align: left; background: #f1f5fb; padding: 8px; font-size: .85rem; }
+.night { display: flex; align-items: center; gap: 6px; width: 100%; border-top: 1px solid var(--line); background: #f1f5fb; padding: 8px; font-size: .85rem; }
+.night-btn { flex: 1; border: 0; background: transparent; padding: 0; text-align: left; }
+.night a { text-decoration: none; }
 .night.empty { color: var(--muted); }
 .night.warn { background: var(--warn-light); }
 .night.included { background: #e8f1ff; }
@@ -3093,6 +3163,18 @@ describe('ActivityCard', () => {
     await userEvent.selectOptions(screen.getByLabelText('Combien ?'), '3');
     expect(actions.saveWish).toHaveBeenCalledWith(expect.objectContaining({ id: 'w3', quantity: 3 }));
   });
+
+  it('affiche le multiplicateur de succès (personnes distinctes)', () => {
+    const state = makeState({
+      wishes: [
+        { id: 'a', trip_id: 'trip', person_id: 'p2', activity_id: 'rando', duration: 'day', quantity: 3 },
+        { id: 'b', trip_id: 'trip', person_id: 'p3', activity_id: 'rando', duration: 'half', quantity: 1 },
+        { id: 'c', trip_id: 'trip', person_id: 'p3', activity_id: 'rando', duration: 'day', quantity: 1 },
+      ],
+    });
+    renderWithTrip(<ActivityCard activity={rando} />, { state });
+    expect(screen.getByLabelText('Suggérée par 2 personne(s)')).toHaveTextContent('×2');
+  });
 });
 ```
 
@@ -3117,7 +3199,10 @@ describe('AddActivityForm', () => {
     await userEvent.type(screen.getByLabelText("Nom de l'activité"), 'Plongée');
     await userEvent.click(screen.getByLabelText('Demi-journée'));
     await userEvent.click(screen.getByRole('button', { name: "Ajouter l'activité" }));
-    expect(actions.saveActivity).toHaveBeenCalledWith(expect.objectContaining({ name: 'Plongée', durations: ['half'], is_custom: true, created_by: 'p1' }));
+    expect(actions.saveActivity).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Plongée', durations: ['half'], is_custom: true, created_by: 'p1' }),
+      expect.objectContaining({ person_id: 'p1', duration: 'half', quantity: 1 }),
+    );
     expect(onDone).toHaveBeenCalled();
   });
 });
@@ -3178,10 +3263,12 @@ export function ActivityCard({ activity }: { activity: Activity }) {
   const { state, me, actions } = useReadyTrip();
   const nameOf = (id: string) => firstName(state.people.find(p => p.id === id)?.name ?? '?');
   const canDelete = activity.is_custom && activity.created_by === me;
+  const pop = new Set(state.wishes.filter(w => w.activity_id === activity.id).map(w => w.person_id)).size;
   return (
     <article className="card activity-card">
       <header>
         <h3>{activity.name}</h3>
+        {pop > 0 && <span className="pop-badge" aria-label={`Suggérée par ${pop} personne(s)`}>×{pop}</span>}
         {canDelete && (
           <button
             className="icon-btn" aria-label={`Supprimer ${activity.name}`}
@@ -3277,10 +3364,15 @@ export function AddActivityForm({ onDone }: { onDone: () => void }) {
     if (!name.trim()) return setError("Donne un nom à l'activité");
     if (!cat) return setError('Choisis une catégorie');
     if (!durations.length) return setError('Choisis au moins une durée');
-    void actions.saveActivity({
-      id: newId(), trip_id: state.trip.id, name: name.trim(), category: cat, durations,
-      has_quantity: hasQuantity, description: description.trim(), links, is_custom: true, created_by: me,
-    });
+    const activityId = newId();
+    void actions.saveActivity(
+      {
+        id: activityId, trip_id: state.trip.id, name: name.trim(), category: cat, durations,
+        has_quantity: hasQuantity, description: description.trim(), links, is_custom: true, created_by: me,
+      },
+      // La suggestion compte comme une envie de son créateur (première durée, ×1).
+      { id: newId(), trip_id: state.trip.id, person_id: me, activity_id: activityId, duration: durations[0], quantity: 1 },
+    );
     onDone();
   };
 
@@ -3342,8 +3434,9 @@ export function AddActivityForm({ onDone }: { onDone: () => void }) {
 
 `src/features/wishes/WishesTab.tsx` :
 ```tsx
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useReadyTrip } from '../../data/TripContext';
+import { popularity } from '../../domain/unplaced';
 import { ProfileCard } from './ProfileCard';
 import { ActivityCard } from './ActivityCard';
 import { AddActivityForm } from './AddActivityForm';
@@ -3354,7 +3447,11 @@ const rank = (c: string) => (CATEGORY_ORDER.includes(c) ? CATEGORY_ORDER.indexOf
 export function WishesTab() {
   const { state } = useReadyTrip();
   const [adding, setAdding] = useState(false);
+  const pop = useMemo(() => popularity(state), [state]);
+  const byPop = (a: { id: string; name: string }, b: { id: string; name: string }) =>
+    (pop.get(b.id) ?? 0) - (pop.get(a.id) ?? 0) || a.name.localeCompare(b.name, 'fr');
   const categories = [...new Set(state.activities.map(a => a.category))].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b, 'fr'));
+  const top = state.activities.filter(a => (pop.get(a.id) ?? 0) > 0).sort(byPop);
   return (
     <div className="wishes">
       <ProfileCard />
@@ -3362,11 +3459,21 @@ export function WishesTab() {
         Coche ce qui te tente et la durée. Selon les envies, <strong>on ne sera pas toujours tous ensemble</strong> :
         le planning prévoit des équipes en parallèle.
       </p>
+      {top.length > 0 && (
+        <section className="card top">
+          <h2>Top des envies</h2>
+          <ol>
+            {top.map(a => (
+              <li key={a.id}>{a.name} <span className="pop-badge">×{pop.get(a.id)}</span></li>
+            ))}
+          </ol>
+        </section>
+      )}
       {categories.map(cat => (
         <section key={cat}>
           <h2>{cat}</h2>
           <div className="cards">
-            {state.activities.filter(a => a.category === cat).map(a => <ActivityCard key={a.id} activity={a} />)}
+            {state.activities.filter(a => a.category === cat).sort(byPop).map(a => <ActivityCard key={a.id} activity={a} />)}
           </div>
         </section>
       ))}
@@ -3383,7 +3490,7 @@ export function WishesTab() {
 - [ ] **Step 4: Lancer les tests (succès attendu)**
 
 Run: `npx vitest run src/features/wishes && npx tsc`
-Expected: PASS (6 tests), tsc OK.
+Expected: PASS (7 tests), tsc OK.
 
 - [ ] **Step 5: Commit**
 
@@ -3453,6 +3560,7 @@ export type SheetState =
   | { kind: 'team'; id: string | null }
   | { kind: 'quick'; teamId: string; idx: number }
   | { kind: 'place'; item: UnplacedItem }
+  | { kind: 'suggest' }
   | null;
 
 export interface PlanningCtx {
@@ -3504,6 +3612,7 @@ function UnplacedChip({ item }: { item: UnplacedItem }) {
 
 export function UnplacedPanel() {
   const { state } = useReadyTrip();
+  const { openSheet } = usePlanning();
   const items = useMemo(() => unplacedItems(state), [state]);
   const [open, setOpen] = useState(true);
   return (
@@ -3511,14 +3620,19 @@ export function UnplacedPanel() {
       <button className="unplaced-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open}>
         À placer ({items.length}) {open ? '▾' : '▴'}
       </button>
-      {open && (items.length === 0 ? (
-        <p className="muted">Toutes les envies sont placées.</p>
-      ) : (
+      {open && (
         <>
-          <p className="muted">Glisse une activité dans le planning, ou touche-la pour choisir le créneau.</p>
-          <ul>{items.map(it => <UnplacedChip key={it.key} item={it} />)}</ul>
+          {items.length === 0 ? (
+            <p className="muted">Toutes les envies sont placées.</p>
+          ) : (
+            <>
+              <p className="muted">Les plus suggérées en premier. Glisse une activité dans le planning, ou touche-la pour choisir le créneau.</p>
+              <ul>{items.map(it => <UnplacedChip key={it.key} item={it} />)}</ul>
+            </>
+          )}
+          <button className="wide" onClick={() => openSheet({ kind: 'suggest' })}>+ Suggérer une nouvelle activité</button>
         </>
-      ))}
+      )}
     </aside>
   );
 }
@@ -3624,13 +3738,19 @@ export function NightCell({ team, night }: { team: Team; night: string }) {
     const a = state.activities.find(x => x.id === included.activity_id);
     return <div className="night included">🌙 {a?.category === BOAT_CATEGORY ? 'À bord' : `Inclus : ${a?.name ?? ''}`}</div>;
   }
-  const stay = state.stays.find(st => st.team_id === team.id && st.night_date === night);
-  const missing = !stay && rosterAt(state, team.id, idx).length > 0;
-  const price = stay?.price != null ? ` · ${formatEuros(stay.price)}${stay.price_mode === 'per_person' ? '/pers.' : ''}` : '';
+  const options = state.stays.filter(st => st.team_id === team.id && st.night_date === night);
+  const chosen = options.find(o => o.chosen);
+  const missing = !chosen && rosterAt(state, team.id, idx).length > 0;
+  const price = chosen?.price != null ? ` · ${formatEuros(chosen.price)}${chosen.price_mode === 'per_person' ? '/pers.' : ''}` : '';
+  const label = chosen
+    ? `Nuit à ${chosen.place_name || 'logement'}${price}`
+    : options.length ? `${options.length} option(s) de logement — à choisir` : '+ Logement';
+  const link = chosen?.links[0];
   return (
-    <button type="button" className={`night ${stay ? '' : 'empty'} ${missing ? 'warn' : ''}`} onClick={() => openSheet({ kind: 'stay', teamId: team.id, night })}>
-      🌙 {stay ? `${stay.place_name || 'Logement'}${price}` : '+ Logement'}
-    </button>
+    <div className={`night ${chosen ? '' : 'empty'} ${missing ? 'warn' : ''}`}>
+      <button type="button" className="night-btn" onClick={() => openSheet({ kind: 'stay', teamId: team.id, night })}>🌙 {label}</button>
+      {link && <a href={link.url} target="_blank" rel="noreferrer noopener" aria-label={`Voir le logement : ${link.label}`}>🔗</a>}
+    </div>
   );
 }
 ```
@@ -3858,9 +3978,9 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 19: Planning — fiches (activité, commentaires, logement, équipe, ajout, placement)
 
 **Files:**
-- Create: `src/features/planning/CommentsThread.tsx`, `src/features/planning/EventSheet.tsx`, `src/features/planning/StaySheet.tsx`, `src/features/planning/TeamSheet.tsx`, `src/features/planning/QuickAddSheet.tsx`, `src/features/planning/PlaceSheet.tsx`
+- Create: `src/features/planning/CommentsThread.tsx`, `src/features/planning/EventSheet.tsx`, `src/features/planning/StaySheet.tsx`, `src/features/planning/TeamSheet.tsx`, `src/features/planning/QuickAddSheet.tsx`, `src/features/planning/PlaceSheet.tsx`, `src/features/planning/SuggestSheet.tsx`
 - Modify: `src/features/planning/PlanningSheets.tsx` (remplacement complet)
-- Test: `src/features/planning/CommentsThread.test.tsx`, `src/features/planning/TeamSheet.test.tsx`
+- Test: `src/features/planning/CommentsThread.test.tsx`, `src/features/planning/TeamSheet.test.tsx`, `src/features/planning/StaySheet.test.tsx`
 
 - [ ] **Step 1: Écrire les tests**
 
@@ -3924,6 +4044,42 @@ it('crée une équipe parallèle avec ses membres', async () => {
 });
 ```
 
+`src/features/planning/StaySheet.test.tsx` :
+```tsx
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { StaySheet } from './StaySheet';
+import { makeState, makeStay } from '../../test/fixtures';
+import { renderWithTrip } from '../../test/renderWithTrip';
+
+vi.mock('../../ui/MapPicker', () => ({ MapPicker: () => null }));
+
+const state = makeState({
+  stays: [
+    makeStay({ id: 'o1', night_date: '2027-04-16', place_name: 'Gîte A', price: 600, links: [{ url: 'https://a.mq', label: 'Annonce A' }] }),
+    makeStay({ id: 'o2', night_date: '2027-04-16', place_name: 'Gîte B', price: 800, chosen: false }),
+  ],
+});
+
+describe('StaySheet', () => {
+  it('liste les options avec leurs liens et retient celle choisie', async () => {
+    const { actions } = renderWithTrip(<StaySheet teamId="all" night="2027-04-16" onClose={vi.fn()} />, { state });
+    expect(screen.getByRole('link', { name: /Annonce A/ })).toHaveAttribute('href', 'https://a.mq');
+    expect(screen.getByRole('radio', { name: 'Retenir Gîte A' })).toBeChecked();
+    await userEvent.click(screen.getByRole('radio', { name: 'Retenir Gîte B' }));
+    expect(actions.chooseStay).toHaveBeenCalledWith('o2');
+  });
+
+  it('propose une nouvelle option de logement', async () => {
+    const { actions } = renderWithTrip(<StaySheet teamId="all" night="2027-04-16" onClose={vi.fn()} />, { state });
+    await userEvent.click(screen.getByRole('button', { name: '+ Proposer un logement' }));
+    await userEvent.type(screen.getByLabelText('Nom du lieu'), 'Villa C');
+    await userEvent.click(screen.getByRole('button', { name: "Enregistrer l'option" }));
+    expect(actions.saveStay).toHaveBeenCalledWith(expect.objectContaining({ place_name: 'Villa C', team_id: 'all', night_date: '2027-04-16' }));
+  });
+});
+```
+
 - [ ] **Step 2: Lancer (échec attendu)**
 
 Run: `npx vitest run src/features/planning`
@@ -3982,6 +4138,7 @@ import { useState } from 'react';
 import { useReadyTrip } from '../../data/TripContext';
 import { durationLabel } from '../../domain/durations';
 import { participantsOf } from '../../domain/conflicts';
+import { nextOccurrence } from '../../domain/placement';
 import { PART_LABEL } from '../../domain/slots';
 import { formatDay } from '../../lib/format';
 import { Sheet } from '../../ui/Sheet';
@@ -3991,9 +4148,11 @@ import { PlaceField } from '../../ui/PlaceField';
 import { PriceField } from '../../ui/PriceField';
 import { LinksEditor } from '../../ui/Links';
 import { CommentsThread } from './CommentsThread';
+import { usePlanning } from './PlanningContext';
 
 export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () => void }) {
   const { state, actions } = useReadyTrip();
+  const { openSheet } = usePlanning();
   const event = state.events.find(e => e.id === eventId);
   const [draft, setDraft] = useState(event);
   const [people, setPeople] = useState(() => participantsOf(state, eventId));
@@ -4009,6 +4168,14 @@ export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () 
     if (!confirm('Retirer cette activité du planning ? Elle reviendra dans « À placer ».')) return;
     void actions.deleteEvent(event.id);
     onClose();
+  };
+  // Une même activité peut être placée plusieurs fois : nouvelle occurrence, mêmes participants proposés.
+  const placeAgain = () => {
+    if (!activity) return;
+    openSheet({
+      kind: 'place',
+      item: { key: '', activity, duration: event.duration, occurrence: nextOccurrence(state, activity.id, event.duration), personIds: people },
+    });
   };
   return (
     <Sheet title={`${activity?.name ?? 'Activité'} · ${durationLabel(event.duration)}`} onClose={onClose}>
@@ -4031,6 +4198,7 @@ export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () 
       </Field>
       <div className="sheet-actions">
         <button className="danger" onClick={remove}>Retirer</button>
+        <button onClick={placeAgain}>Placer à nouveau</button>
         <button className="primary" disabled={!priceOk} onClick={save}>Enregistrer</button>
       </div>
       <Field label="Commentaires">
@@ -4045,47 +4213,88 @@ export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () 
 ```tsx
 import { useState } from 'react';
 import { useReadyTrip } from '../../data/TripContext';
-import type { Stay } from '../../domain/types';
+import type { Stay, TripState } from '../../domain/types';
 import { slotIndex } from '../../domain/slots';
 import { rosterAt } from '../../domain/teams';
-import { formatDay } from '../../lib/format';
+import { formatDay, formatEuros } from '../../lib/format';
 import { newId } from '../../lib/ids';
 import { Sheet } from '../../ui/Sheet';
 import { Field } from '../../ui/Field';
 import { PlaceField } from '../../ui/PlaceField';
 import { PriceField } from '../../ui/PriceField';
-import { LinksEditor } from '../../ui/Links';
+import { LinkList, LinksEditor } from '../../ui/Links';
+
+const emptyOption = (s: TripState, teamId: string, night: string): Stay => ({
+  id: newId(), trip_id: s.trip.id, team_id: teamId, night_date: night, place_name: '',
+  lat: null, lng: null, price: null, price_mode: 'total', links: [], notes: '', chosen: false,
+});
 
 export function StaySheet({ teamId, night, onClose }: { teamId: string; night: string; onClose: () => void }) {
   const { state, actions } = useReadyTrip();
-  const existing = state.stays.find(s => s.team_id === teamId && s.night_date === night);
-  const [draft, setDraft] = useState<Stay>(() => existing ?? {
-    id: newId(), trip_id: state.trip.id, team_id: teamId, night_date: night, place_name: '',
-    lat: null, lng: null, price: null, price_mode: 'total', links: [], notes: '',
-  });
+  const options = state.stays.filter(st => st.team_id === teamId && st.night_date === night);
+  const [editing, setEditing] = useState<Stay | null>(() => (options.length ? null : emptyOption(state, teamId, night)));
   const [priceOk, setPriceOk] = useState(true);
   const team = state.teams.find(t => t.id === teamId);
   const roster = rosterAt(state, teamId, slotIndex(state.trip, night, 'soir'));
+  const save = () => {
+    if (!editing) return;
+    void actions.saveStay(editing);
+    setEditing(null);
+  };
   return (
     <Sheet title={`Nuit du ${formatDay(night)}`} onClose={onClose}>
-      <p className="muted">{team?.name} · {roster.length} pers.</p>
-      <Field label="Ville / logement">
-        <PlaceField value={{ place_name: draft.place_name, lat: draft.lat, lng: draft.lng }} onChange={v => setDraft(d => ({ ...d, ...v }))} />
-      </Field>
-      <Field label="Prix">
-        <PriceField price={draft.price} mode={draft.price_mode} participants={roster.length} onValidity={setPriceOk}
-          onChange={(price, price_mode) => setDraft(d => ({ ...d, price, price_mode }))} />
-      </Field>
-      <Field label="Liens">
-        <LinksEditor links={draft.links} onChange={links => setDraft(d => ({ ...d, links }))} />
-      </Field>
-      <Field label="Notes">
-        <textarea aria-label="Notes" rows={2} value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} />
-      </Field>
-      <div className="sheet-actions">
-        {existing ? <button className="danger" onClick={() => { void actions.deleteStay(existing.id); onClose(); }}>Supprimer</button> : <span />}
-        <button className="primary" disabled={!priceOk} onClick={() => { void actions.saveStay(draft); onClose(); }}>Enregistrer</button>
-      </div>
+      <p className="muted">
+        {team?.name} · {roster.length} pers. — Proposez plusieurs logements, puis retenez-en un : seul le logement
+        retenu compte dans le road-book et les dépenses.
+      </p>
+      {options.length > 0 && (
+        <ul className="stay-options">
+          {options.map(o => (
+            <li key={o.id} className={`stay-option ${o.chosen ? 'chosen' : ''}`}>
+              <label className="check">
+                <input type="radio" name="chosen-stay" checked={o.chosen} aria-label={`Retenir ${o.place_name || 'ce logement'}`}
+                  onChange={() => void actions.chooseStay(o.id)} />
+                <strong>{o.place_name || 'Logement sans nom'}</strong>
+                {o.chosen && <span className="chip">Retenu</span>}
+              </label>
+              <span className="muted">
+                {o.price != null ? `${formatEuros(o.price)}${o.price_mode === 'per_person' ? ' / pers.' : ' au total'}` : 'Prix non renseigné'}
+              </span>
+              <LinkList links={o.links} />
+              {o.notes && <p className="muted">{o.notes}</p>}
+              <div className="row">
+                <button type="button" onClick={() => setEditing(o)}>Modifier</button>
+                <button type="button" className="danger" onClick={() => { if (confirm('Supprimer cette option ?')) void actions.deleteStay(o.id); }}>Supprimer</button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {editing ? (
+        <div className="card">
+          <h3>{options.some(o => o.id === editing.id) ? "Modifier l'option" : 'Nouvelle option'}</h3>
+          <Field label="Ville / logement">
+            <PlaceField key={editing.id} value={{ place_name: editing.place_name, lat: editing.lat, lng: editing.lng }}
+              onChange={v => setEditing(d => d && { ...d, ...v })} />
+          </Field>
+          <Field label="Prix">
+            <PriceField key={editing.id} price={editing.price} mode={editing.price_mode} participants={roster.length} onValidity={setPriceOk}
+              onChange={(price, price_mode) => setEditing(d => d && { ...d, price, price_mode })} />
+          </Field>
+          <Field label="Liens vers le logement">
+            <LinksEditor links={editing.links} onChange={links => setEditing(d => d && { ...d, links })} />
+          </Field>
+          <Field label="Notes">
+            <textarea aria-label="Notes" rows={2} value={editing.notes} onChange={e => setEditing(d => d && { ...d, notes: e.target.value })} />
+          </Field>
+          <div className="sheet-actions">
+            <button type="button" onClick={() => setEditing(null)}>Annuler</button>
+            <button type="button" className="primary" disabled={!priceOk} onClick={save}>Enregistrer l'option</button>
+          </div>
+        </div>
+      ) : (
+        <button className="wide" onClick={() => setEditing(emptyOption(state, teamId, night))}>+ Proposer un logement</button>
+      )}
     </Sheet>
   );
 }
@@ -4244,6 +4453,21 @@ export function PlaceSheet({ item, onClose }: { item: UnplacedItem; onClose: () 
 }
 ```
 
+`src/features/planning/SuggestSheet.tsx` :
+```tsx
+import { Sheet } from '../../ui/Sheet';
+import { AddActivityForm } from '../wishes/AddActivityForm';
+
+/** Suggérer depuis le planning : même formulaire que l'onglet Envies ; l'activité compte comme envie du créateur. */
+export function SuggestSheet({ onClose }: { onClose: () => void }) {
+  return (
+    <Sheet title="Suggérer une activité" onClose={onClose}>
+      <AddActivityForm onDone={onClose} />
+    </Sheet>
+  );
+}
+```
+
 `src/features/planning/PlanningSheets.tsx` (remplacement) :
 ```tsx
 import type { SheetState } from './PlanningContext';
@@ -4252,6 +4476,7 @@ import { StaySheet } from './StaySheet';
 import { TeamSheet } from './TeamSheet';
 import { QuickAddSheet } from './QuickAddSheet';
 import { PlaceSheet } from './PlaceSheet';
+import { SuggestSheet } from './SuggestSheet';
 
 export function PlanningSheets({ sheet, onClose }: { sheet: NonNullable<SheetState>; onClose: () => void }) {
   switch (sheet.kind) {
@@ -4260,6 +4485,7 @@ export function PlanningSheets({ sheet, onClose }: { sheet: NonNullable<SheetSta
     case 'team': return <TeamSheet teamId={sheet.id} onClose={onClose} />;
     case 'quick': return <QuickAddSheet teamId={sheet.teamId} idx={sheet.idx} onClose={onClose} />;
     case 'place': return <PlaceSheet item={sheet.item} onClose={onClose} />;
+    case 'suggest': return <SuggestSheet onClose={onClose} />;
   }
 }
 ```
@@ -4267,13 +4493,13 @@ export function PlanningSheets({ sheet, onClose }: { sheet: NonNullable<SheetSta
 - [ ] **Step 4: Lancer les tests (succès attendu)**
 
 Run: `npm test && npx tsc`
-Expected: PASS (dont 4 nouveaux tests), tsc OK.
+Expected: PASS (dont 6 nouveaux tests), tsc OK.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add -A
-git commit -m "feat(planning): fiches activité, commentaires, logement, équipes et placement
+git commit -m "feat(planning): fiches activité, commentaires, options de logement, équipes, placement et suggestions
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -4287,6 +4513,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - [ ] **Step 3:** Planning : le panneau affiche « Surf · Suggérée par 2 » en tête. Glisser Surf sur le 16 matin → tuile apparaît, panneau mis à jour. Toucher « Randonnée n°1 » → fiche Placer → placer.
 - [ ] **Step 4:** « + Équipe » → Équipe bateau du 17 matin au 20 soir avec Theo → la colonne du 17 montre deux blocs. Glisser Bateau 4j/3n dans l'équipe bateau le 17 matin → tuiles sur 4 jours, nuits « À bord ».
 - [ ] **Step 5:** Ouvrir la tuile Surf : ajouter un lieu par recherche « Tartane », un prix 45 par personne, un lien, un commentaire → Enregistrer → icônes 🔗 et 💬 sur la tuile.
+- [ ] **Step 5b:** Ligne Nuit du 16 (Tout le groupe) : proposer deux logements avec lien et prix → la première est retenue (« Nuit à … 🔗 ») ; retenir la seconde → la grille, le road-book et les dépenses n'utilisent que l'option retenue. Les nuits de l'équipe bateau restent « À bord ».
+- [ ] **Step 5c:** Dans la fiche Surf, « Placer à nouveau » → placer le 18 après-midi → deux tuiles Surf. Dans le panneau, « + Suggérer une nouvelle activité » → « Plongée » → elle apparaît dans « À placer » et dans l'onglet Envies avec ×1 ; le Top des envies est trié par ×N.
 - [ ] **Step 6:** Ouvrir un second onglet sur le même lien → une modification dans l'un apparaît dans l'autre en ~1 s.
 - [ ] **Step 7:** Vue mobile (`resize_window` preset `mobile`) : panneau en bas, défilement horizontal des jours, appui long pour glisser. Remettre `desktop` ensuite.
 - [ ] **Step 8:** Corriger tout défaut constaté (avec un test si c'est de la logique), puis commit `fix(planning): …`.
@@ -4470,10 +4698,13 @@ export function DayRecap({ days }: { days: DayPlan[] }) {
                 <p>🌙 {activity(en.includedBy.activity_id)?.category === BOAT_CATEGORY ? 'Nuit à bord' : `Nuit incluse (${activity(en.includedBy.activity_id)?.name})`}</p>
               )}
               {en.stay && (
-                <p>
-                  🌙 {en.stay.place_name || 'Logement'}
-                  {en.stay.price != null && ` · ${formatEuros(en.stay.price)}${en.stay.price_mode === 'per_person' ? '/pers.' : ''}`}
-                </p>
+                <div>
+                  <p>
+                    🌙 Nuit à {en.stay.place_name || 'logement'}
+                    {en.stay.price != null && ` · ${formatEuros(en.stay.price)}${en.stay.price_mode === 'per_person' ? '/pers.' : ''}`}
+                  </p>
+                  <LinkList links={en.stay.links} />
+                </div>
               )}
             </div>
           ))}
