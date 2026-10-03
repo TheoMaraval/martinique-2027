@@ -37,7 +37,7 @@ describe('AddActivityForm finitions', () => {
     const [a, w] = vi.mocked(actions.saveActivity).mock.calls[0];
     expect(a.category).toBe('Mer');
     expect(a.durations).toEqual(['half', 'evening']);
-    expect(w.duration).toBe('half');
+    expect(w?.duration).toBe('half');
   });
   it('indique le bouton multi-jours', async () => {
     renderWithTrip(<AddActivityForm onDone={vi.fn()} />);
