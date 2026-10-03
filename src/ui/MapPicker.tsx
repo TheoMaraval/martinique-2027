@@ -25,7 +25,7 @@ export function MapPicker({ lat, lng, onPick }: { lat: number | null; lng: numbe
       <TileLayer url={OSM_URL} attribution={OSM_ATTRIBUTION} />
       <ClickHandler onPick={onPick} />
       <Recenter lat={lat} lng={lng} />
-      {pos && <CircleMarker center={pos} radius={9} pathOptions={{ color: '#ff6f59', fillOpacity: 0.8 }} />}
+      {pos && <CircleMarker center={pos} radius={9} pathOptions={{ color: '#D9472B', fillOpacity: 0.8 }} />}
     </MapContainer>
   );
 }

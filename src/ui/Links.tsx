@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link2, X } from 'lucide-react';
 import type { Link } from '../domain/types';
 import { isValidUrl } from '../domain/validation';
 
@@ -9,7 +10,7 @@ export function LinkList({ links }: { links: Link[] }) {
   return (
     <ul className="link-list">
       {safe.map((l, i) => (
-        <li key={i}><a href={l.url} target="_blank" rel="noreferrer noopener">🔗 {l.label}</a></li>
+        <li key={i}><a href={l.url} target="_blank" rel="noreferrer noopener"><Link2 size={16} /> {l.label}</a></li>
       ))}
     </ul>
   );
@@ -35,8 +36,8 @@ export function LinksEditor({ links, onChange }: { links: Link[]; onChange: (lin
       <ul>
         {links.map((l, i) => (
           <li key={i}>
-            {isValidUrl(l.url) ? <a href={l.url} target="_blank" rel="noreferrer noopener">🔗 {l.label}</a> : <span>{l.label}</span>}
-            <button type="button" className="icon-btn" aria-label={`Retirer ${l.label}`} onClick={() => onChange(links.filter((_, j) => j !== i))}>×</button>
+            {isValidUrl(l.url) ? <a href={l.url} target="_blank" rel="noreferrer noopener"><Link2 size={16} /> {l.label}</a> : <span>{l.label}</span>}
+            <button type="button" className="icon-btn" aria-label={`Retirer ${l.label}`} onClick={() => onChange(links.filter((_, j) => j !== i))}><X size={18} /></button>
           </li>
         ))}
       </ul>

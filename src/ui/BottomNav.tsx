@@ -1,18 +1,20 @@
+import { CalendarDays, Map as MapIcon, Palmtree, type LucideIcon } from 'lucide-react';
+
 export type Tab = 'envies' | 'planning' | 'roadbook';
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'envies', label: 'Envies', icon: '🌴' },
-  { id: 'planning', label: 'Planning', icon: '🗓️' },
-  { id: 'roadbook', label: 'Road-book', icon: '🗺️' },
+const TABS: { id: Tab; label: string; Icon: LucideIcon }[] = [
+  { id: 'envies', label: 'Envies', Icon: Palmtree },
+  { id: 'planning', label: 'Planning', Icon: CalendarDays },
+  { id: 'roadbook', label: 'Road-book', Icon: MapIcon },
 ];
 
 export function BottomNav({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   return (
-    <nav className="bottom-nav">
-      {TABS.map(t => (
-        <button key={t.id} className={tab === t.id ? 'active' : ''} aria-current={tab === t.id ? 'page' : undefined} onClick={() => onChange(t.id)}>
-          <span aria-hidden="true">{t.icon}</span>
-          {t.label}
+    <nav className="bottom-nav" aria-label="Onglets">
+      {TABS.map(({ id, label, Icon }) => (
+        <button key={id} className={tab === id ? 'active' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => onChange(id)}>
+          <span className="nav-icon"><Icon size={20} /></span>
+          <span className="nav-label">{label}</span>
         </button>
       ))}
     </nav>
