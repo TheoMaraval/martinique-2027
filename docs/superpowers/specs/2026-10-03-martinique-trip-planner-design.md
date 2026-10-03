@@ -33,7 +33,7 @@ Application web collaborative, en temps réel, pour organiser le voyage d'un gro
 
 ### Temps réel
 
-- Supabase Realtime **Broadcast** sur un canal nommé d'après le code du voyage : après chaque écriture réussie via RPC, le client émet un message `{table, id}` ; les autres clients rechargent l'élément concerné via RPC. (Broadcast évite d'exposer les tables à `anon` comme l'exigerait Postgres Changes.)
+- Supabase Realtime **Broadcast** sur un canal nommé d'après le code du voyage : après chaque écriture réussie via RPC, le client émet un message `changed` ; les autres clients rechargent l'état complet via `get_trip` (anti-rebond 300 ms — l'état est petit). (Broadcast évite d'exposer les tables à `anon` comme l'exigerait Postgres Changes.)
 - Dernier qui écrit gagne. Pas de verrouillage.
 - Mises à jour optimistes ; rollback + toast si la RPC échoue.
 - Bandeau « Hors ligne — reconnexion… » quand le canal est déconnecté ; rechargement complet à la reconnexion.
@@ -96,11 +96,12 @@ Navigation par onglets en bas d'écran : **Envies**, **Planning**, **Road-book**
 **Glisser-déposer**
 - On glisse un élément du panneau sur un créneau d'une équipe.
 - Emprise : demi-journée = 1 créneau (matin ou après-midi), journée = matin + après-midi, soir = créneau soir, multi-jours = du créneau de départ jusqu'à N jours, en occupant aussi les nuits (N nuits).
+- Sur mobile, un simple appui sur un élément du panneau ouvre « Placer… » (choix de l'équipe et du créneau) en alternative au glisser-déposer.
 - Une activité planifiée peut être redéplacée (autre créneau / autre équipe) ou supprimée.
 - On peut aussi créer une activité planifiée directement dans un créneau (bouton « + ») à partir du catalogue, sans envie préalable.
 
 **Fiche activité planifiée** (clic sur l'activité)
-- **Participants** : préremplis avec les membres de l'équipe ; modifiables (ajout/retrait).
+- **Participants** : préremplis avec les membres de l'équipe qui avaient suggéré l'activité (ou toute l'équipe si aucun d'eux n'y est) ; modifiables (ajout/retrait).
 - **Lieu** : nom + **point GPS** (choisi en touchant une mini-carte Leaflet, par recherche d'adresse, ou en collant « lat, lng »). Coordonnées validées (lat ∈ [-90, 90], lng ∈ [-180, 180]) sinon message d'erreur.
 - **Budget** optionnel : montant + mode **total** (réparti entre participants) ou **par personne**.
 - **Liens** : liste d'URL avec libellé (site du loueur, réservation, avis…), ajout/suppression ; ouverts dans un nouvel onglet. URL validée (http/https).
@@ -109,7 +110,7 @@ Navigation par onglets en bas d'écran : **Envies**, **Planning**, **Road-book**
 
 **Ligne Nuit (logement)**
 - Pour chaque nuit et chaque équipe présente cette nuit-là : ville / nom du logement, point GPS, prix + mode (total/par personne), liens, notes.
-- Pendant une activité multi-jours de type bateau, la nuit de l'équipe concernée est automatiquement « À bord » (prix inclus dans l'activité, non éditable).
+- Pendant une activité multi-jours, la nuit de l'équipe concernée est automatiquement « À bord » (catégorie Bateau) ou « Inclus » (autres) — calculé, pas stocké ; prix inclus dans l'activité.
 
 **Alertes** (surlignage orange + liste en haut du planning)
 - Une personne a deux activités planifiées qui se chevauchent.
@@ -127,20 +128,22 @@ Navigation par onglets en bas d'écran : **Envies**, **Planning**, **Road-book**
 
 ## Modèle de données (Supabase / Postgres)
 
-Un **créneau** est identifié par `(date, part)` avec `part ∈ {matin, aprem, soir}`. Les durées sont codées : `half`, `day`, `evening`, `multi` (avec `days`, `nights`).
+Un **créneau** est identifié par `(date, part)` avec `part ∈ {matin, aprem, soir}`. Les durées sont codées en texte : `half`, `day`, `evening`, `multi:<jours>:<nuits>` (ex. `multi:4:3`).
 
 | Table | Colonnes principales |
 |---|---|
+Toutes les tables portent `trip_id` (y compris les tables de liaison) pour des contrôles d'accès uniformes.
+
 | `trips` | `id`, `code` (unique, secret), `name`, `start_date`, `end_date` |
 | `people` | `id`, `trip_id`, `name`, `budget_max` (numeric, nullable) |
-| `activities` | `id`, `trip_id`, `name`, `category`, `durations` (jsonb : liste de `{kind, days?, nights?}`), `has_quantity`, `description`, `links` (jsonb : `[{url, label}]`), `is_custom`, `created_by` (→ people) |
-| `wishes` | `id`, `person_id`, `activity_id`, `duration` (jsonb), `quantity` (int ≥ 1) — unique (`person_id`, `activity_id`, `duration`) |
+| `activities` | `id`, `trip_id`, `name`, `category`, `durations` (text[] de codes durée), `has_quantity`, `description`, `links` (jsonb : `[{url, label}]`), `is_custom`, `created_by` (→ people) |
+| `wishes` | `id`, `person_id`, `activity_id`, `duration` (text), `quantity` (int ≥ 1) — unique (`person_id`, `activity_id`, `duration`) |
 | `teams` | `id`, `trip_id`, `name`, `color`, `start_date`, `start_part`, `end_date`, `end_part`, `is_default` |
 | `team_members` | `team_id`, `person_id` |
-| `events` | `id`, `trip_id`, `team_id`, `activity_id`, `duration` (jsonb), `occurrence` (int, pour quantités), `start_date`, `start_part`, `place_name`, `lat`, `lng`, `price`, `price_mode` (`total`/`per_person`), `links` (jsonb), `notes` |
+| `events` | `id`, `trip_id`, `team_id`, `activity_id`, `duration` (text), `occurrence` (int, pour quantités), `start_date`, `start_part`, `place_name`, `lat`, `lng`, `price`, `price_mode` (`total`/`per_person`), `links` (jsonb), `notes` |
 | `event_participants` | `event_id`, `person_id` |
 | `event_comments` | `id`, `event_id`, `author_id` (→ people), `body`, `created_at` |
-| `stays` | `id`, `trip_id`, `team_id`, `night_date`, `place_name`, `lat`, `lng`, `price`, `price_mode`, `links` (jsonb), `notes`, `is_boat` |
+| `stays` | `id`, `trip_id`, `team_id`, `night_date`, `place_name`, `lat`, `lng`, `price`, `price_mode`, `links` (jsonb), `notes` — unique (`team_id`, `night_date`) |
 
 - Un élément « à placer » est considéré placé lorsqu'il existe un `event` avec même `activity_id`, même `duration` et même `occurrence`.
 - Script de seed : le voyage (code secret généré), les 10 personnes, le catalogue initial, l'équipe par défaut « Tout le groupe ».
