@@ -39,7 +39,7 @@ export function TeamSheet({ teamId, onClose }: { teamId: string | null; onClose:
     const team = { ...draft, name: draft.name.trim() };
     const outside = existing ? eventsOutsideTeam(state, team) : [];
     if (outside.length) {
-      if (!confirm(`${outside.length} activité(s) sortiront de la période de l'équipe et reviendront dans « À placer ». Continuer ?`)) return;
+      if (!confirm(`${outside.length} activité(s) sortiront de la période de l'équipe et seront retirées du planning. Continuer ?`)) return;
       for (const e of outside) void actions.deleteEvent(e.id);
     }
     void actions.saveTeam(team, memberIds);

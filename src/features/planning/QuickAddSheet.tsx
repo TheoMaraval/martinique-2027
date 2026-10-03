@@ -12,7 +12,10 @@ export function QuickAddSheet({ teamId, idx, onClose }: { teamId: string; idx: n
   const { place } = usePlanning();
   const { date, part } = slotAt(state.trip, idx);
   const add = (activity: Activity, duration: DurationKey) => {
-    place({ key: '', activity, duration, occurrence: nextOccurrence(state, activity.id, duration), personIds: state.wishes.filter(w => w.activity_id === activity.id && w.duration === duration).map(w => w.person_id) }, teamId, idx);
+    const occurrence = nextOccurrence(state, activity.id, duration);
+    place({ key: '', activity, duration, occurrence, personIds: state.wishes
+      .filter(w => w.activity_id === activity.id && w.duration === duration && (!activity.has_quantity || w.quantity >= occurrence))
+      .map(w => w.person_id) }, teamId, idx);
     onClose();
   };
   return (

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
-  DndContext, DragOverlay, MouseSensor, TouchSensor, closestCenter, pointerWithin, useSensor, useSensors,
+  DndContext, DragOverlay, MouseSensor, TouchSensor, pointerWithin, rectIntersection, useSensor, useSensors,
   type CollisionDetection, type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core';
 import { useReadyTrip } from '../../data/TripContext';
@@ -18,10 +18,12 @@ import { DragPreview } from './DragPreview';
 
 const REFUSED = 'Impossible de placer cette activité sur ce créneau';
 
-// Sous le pointeur d'abord ; à défaut, la cellule la plus proche.
+// Sous le pointeur d'abord (le panneau « À placer » = annulation, prioritaire) ; à défaut, intersection de rectangles.
 const collision: CollisionDetection = args => {
   const hits = pointerWithin(args);
-  return hits.length ? hits : closestCenter(args);
+  const cancel = hits.filter(h => h.id === 'cancel');
+  if (cancel.length) return cancel;
+  return hits.length ? hits : rectIntersection(args);
 };
 
 export function PlanningTab() {
@@ -58,9 +60,10 @@ export function PlanningTab() {
 
   const onDragEnd = (ev: DragEndEvent) => {
     setActive(null);
-    const target = ev.over?.data.current as DropData | undefined;
+    if (!ev.over || ev.over.id === 'cancel') return;
+    const target = ev.over.data.current as DropData | undefined;
     const src = ev.active.data.current as DragData | undefined;
-    if (!target || !src) return;
+    if (!target || !src || typeof target.teamId !== 'string') return;
     if (src.type === 'wish') place(src.item, target.teamId, target.idx);
     else moveEvent(src.eventId, target.teamId, target.idx);
   };

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useDraggable } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { useReadyTrip } from '../../data/TripContext';
 import { unplacedItems, type UnplacedItem } from '../../domain/unplaced';
 import { durationLabel } from '../../domain/durations';
@@ -40,8 +40,10 @@ export function UnplacedPanel() {
   const { openSheet } = usePlanning();
   const items = useMemo(() => unplacedItems(state), [state]);
   const [open, setOpen] = useState(true);
+  // Déposer ici = annuler le glisser-déposer.
+  const { setNodeRef } = useDroppable({ id: 'cancel', data: { type: 'cancel' } });
   return (
-    <aside className="unplaced" aria-label="Activités à placer">
+    <aside ref={setNodeRef} className="unplaced" aria-label="Activités à placer">
       <button className="unplaced-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open}>
         À placer ({items.length}) {open ? '▾' : '▴'}
       </button>

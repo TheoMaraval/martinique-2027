@@ -23,6 +23,7 @@ export function MoveSheet({ eventId, onClose }: { eventId: string; onClose: () =
   if (!event) return null;
   const activity = state.activities.find(a => a.id === event.activity_id);
   const options = optionsFor(teamId);
+  const effectiveIdx = options.some(o => o.index === idx) ? idx : options[0]?.index ?? -1;
   return (
     <Sheet title={`Déplacer · ${activity?.name ?? 'Activité'} (${durationLabel(event.duration)})`} onClose={onClose}>
       <Field label="Équipe">
@@ -31,13 +32,13 @@ export function MoveSheet({ eventId, onClose }: { eventId: string; onClose: () =
         </select>
       </Field>
       <Field label="Créneau de départ">
-        <select aria-label="Créneau" value={idx} onChange={e => setIdx(Number(e.target.value))}>
+        <select aria-label="Créneau" value={effectiveIdx} onChange={e => setIdx(Number(e.target.value))}>
           {options.map(s => <option key={s.index} value={s.index}>{formatDay(s.date)} · {PART_LABEL[s.part]}</option>)}
         </select>
       </Field>
       <div className="sheet-actions">
         <button onClick={onClose}>Annuler</button>
-        <button className="primary" disabled={idx < 0} onClick={() => { moveEvent(event.id, teamId, idx); onClose(); }}>Déplacer</button>
+        <button className="primary" disabled={effectiveIdx < 0} onClick={() => { moveEvent(event.id, teamId, effectiveIdx); onClose(); }}>Déplacer</button>
       </div>
     </Sheet>
   );

@@ -18,20 +18,24 @@ export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () 
   const { state, actions } = useReadyTrip();
   const { openSheet } = usePlanning();
   const event = state.events.find(e => e.id === eventId);
+  const [initial] = useState(event);
   const [draft, setDraft] = useState(event);
+  const [peopleTouched, setPeopleTouched] = useState(false);
   const [people, setPeople] = useState(() => participantsOf(state, eventId));
   const [priceOk, setPriceOk] = useState(true);
   if (!event || !draft) return null;
   const activity = state.activities.find(a => a.id === event.activity_id);
   const team = state.teams.find(t => t.id === event.team_id);
-  // On n'enregistre que les champs édités, par-dessus la dernière version de l'activité (synchro temps réel).
-  const edited = { ...event, place_name: draft.place_name, lat: draft.lat, lng: draft.lng, price: draft.price, price_mode: draft.price_mode, links: draft.links, notes: draft.notes };
-  const before = participantsOf(state, eventId);
-  const dirty = JSON.stringify(edited) !== JSON.stringify(event)
-    || people.length !== before.length || people.some(p => !before.includes(p));
-  const flush = () => { if (dirty) void actions.saveEvent(edited, people); };
+  // On n'applique que les champs réellement modifiés, par-dessus la dernière version (synchro temps réel).
+  const FIELDS = ['place_name', 'lat', 'lng', 'price', 'price_mode', 'links', 'notes'] as const;
+  const patch: Partial<typeof draft> = {};
+  if (initial) for (const k of FIELDS) if (JSON.stringify(draft[k]) !== JSON.stringify(initial[k])) Object.assign(patch, { [k]: draft[k] });
+  const edited = { ...event, ...patch };
+  const participants = peopleTouched ? people : undefined;
+  const dirty = Object.keys(patch).length > 0 || peopleTouched;
+  const flush = () => { if (dirty && priceOk) void actions.saveEvent(edited, participants); };
   const save = () => {
-    void actions.saveEvent(edited, people);
+    void actions.saveEvent(edited, participants);
     onClose();
   };
   const remove = () => {
@@ -52,7 +56,7 @@ export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () 
     <Sheet title={`${activity?.name ?? 'Activité'} · ${durationLabel(event.duration)}`} onClose={onClose}>
       <p className="muted">{team?.name} · {formatDay(event.start_date)} · {PART_LABEL[event.start_part]}</p>
       <Field label={`Participants (${people.length})`}>
-        <PeoplePicker people={state.people} selected={people} onChange={setPeople} />
+        <PeoplePicker people={state.people} selected={people} onChange={ids => { setPeople(ids); setPeopleTouched(true); }} />
       </Field>
       <Field label="Lieu">
         <PlaceField value={{ place_name: draft.place_name, lat: draft.lat, lng: draft.lng }} onChange={v => setDraft(d => d && { ...d, ...v })} />
