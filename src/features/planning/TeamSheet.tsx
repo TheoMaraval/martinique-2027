@@ -3,6 +3,7 @@ import { useReadyTrip } from '../../data/TripContext';
 import type { Team } from '../../domain/types';
 import { PART_LABEL, buildSlots, slotAt, slotIndex } from '../../domain/slots';
 import { membersOf } from '../../domain/teams';
+import { eventsOutsideTeam } from '../../domain/placement';
 import { formatDay } from '../../lib/format';
 import { newId } from '../../lib/ids';
 import { Sheet } from '../../ui/Sheet';
@@ -32,6 +33,16 @@ export function TeamSheet({ teamId, onClose }: { teamId: string | null; onClose:
   const remove = () => {
     if (!existing || !confirm('Supprimer cette équipe ? Ses activités et logements seront retirés du planning.')) return;
     void actions.deleteTeam(existing.id);
+    onClose();
+  };
+  const save = () => {
+    const team = { ...draft, name: draft.name.trim() };
+    const outside = existing ? eventsOutsideTeam(state, team) : [];
+    if (outside.length) {
+      if (!confirm(`${outside.length} activité(s) sortiront de la période de l'équipe et reviendront dans « À placer ». Continuer ?`)) return;
+      for (const e of outside) void actions.deleteEvent(e.id);
+    }
+    void actions.saveTeam(team, memberIds);
     onClose();
   };
   return (
@@ -65,7 +76,7 @@ export function TeamSheet({ teamId, onClose }: { teamId: string | null; onClose:
       </Field>
       <div className="sheet-actions">
         {existing ? <button className="danger" onClick={remove}>Supprimer</button> : <span />}
-        <button className="primary" disabled={!valid} onClick={() => { void actions.saveTeam({ ...draft, name: draft.name.trim() }, memberIds); onClose(); }}>Enregistrer</button>
+        <button className="primary" disabled={!valid} onClick={save}>Enregistrer</button>
       </div>
     </Sheet>
   );

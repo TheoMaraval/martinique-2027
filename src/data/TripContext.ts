@@ -32,6 +32,8 @@ export interface TripCtx {
   dismissToast(id: string): void;
   actions: TripActions;
   retry(): void;
+  /** Affiche un message court (toast). */
+  notify(text: string): void;
 }
 
 export const TripContext = createContext<TripCtx | null>(null);

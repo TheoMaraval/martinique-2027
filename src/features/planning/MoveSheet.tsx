@@ -1,24 +1,30 @@
 import { useState } from 'react';
 import { useReadyTrip } from '../../data/TripContext';
-import type { UnplacedItem } from '../../domain/unplaced';
 import { durationLabel } from '../../domain/durations';
-import { PART_LABEL } from '../../domain/slots';
-import { defaultTeam } from '../../domain/teams';
 import { startOptions } from '../../domain/placement';
+import { PART_LABEL, slotIndex } from '../../domain/slots';
 import { formatDay } from '../../lib/format';
 import { Sheet } from '../../ui/Sheet';
 import { Field } from '../../ui/Field';
 import { usePlanning } from './PlanningContext';
 
-export function PlaceSheet({ item, onClose }: { item: UnplacedItem; onClose: () => void }) {
+export function MoveSheet({ eventId, onClose }: { eventId: string; onClose: () => void }) {
   const { state } = useReadyTrip();
-  const { place } = usePlanning();
-  const optionsFor = (teamId: string) => startOptions(state, teamId, item.duration);
-  const [teamId, setTeamId] = useState(defaultTeam(state).id);
-  const [idx, setIdx] = useState(() => optionsFor(defaultTeam(state).id)[0]?.index ?? -1);
+  const { moveEvent } = usePlanning();
+  const event = state.events.find(e => e.id === eventId);
+  const optionsFor = (teamId: string) => (event ? startOptions(state, teamId, event.duration) : []);
+  const [teamId, setTeamId] = useState(event?.team_id ?? '');
+  const [idx, setIdx] = useState(() => {
+    if (!event) return -1;
+    const current = slotIndex(state.trip, event.start_date, event.start_part);
+    const opts = optionsFor(event.team_id);
+    return opts.some(o => o.index === current) ? current : opts[0]?.index ?? -1;
+  });
+  if (!event) return null;
+  const activity = state.activities.find(a => a.id === event.activity_id);
   const options = optionsFor(teamId);
   return (
-    <Sheet title={`Placer · ${item.activity.name} (${durationLabel(item.duration)})`} onClose={onClose}>
+    <Sheet title={`Déplacer · ${activity?.name ?? 'Activité'} (${durationLabel(event.duration)})`} onClose={onClose}>
       <Field label="Équipe">
         <select aria-label="Équipe" value={teamId} onChange={e => { setTeamId(e.target.value); setIdx(optionsFor(e.target.value)[0]?.index ?? -1); }}>
           {state.teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -31,7 +37,7 @@ export function PlaceSheet({ item, onClose }: { item: UnplacedItem; onClose: () 
       </Field>
       <div className="sheet-actions">
         <button onClick={onClose}>Annuler</button>
-        <button className="primary" disabled={idx < 0} onClick={() => { place(item, teamId, idx); onClose(); }}>Placer</button>
+        <button className="primary" disabled={idx < 0} onClick={() => { moveEvent(event.id, teamId, idx); onClose(); }}>Déplacer</button>
       </div>
     </Sheet>
   );

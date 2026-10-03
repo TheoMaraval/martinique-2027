@@ -24,8 +24,14 @@ export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () 
   if (!event || !draft) return null;
   const activity = state.activities.find(a => a.id === event.activity_id);
   const team = state.teams.find(t => t.id === event.team_id);
+  // On n'enregistre que les champs édités, par-dessus la dernière version de l'activité (synchro temps réel).
+  const edited = { ...event, place_name: draft.place_name, lat: draft.lat, lng: draft.lng, price: draft.price, price_mode: draft.price_mode, links: draft.links, notes: draft.notes };
+  const before = participantsOf(state, eventId);
+  const dirty = JSON.stringify(edited) !== JSON.stringify(event)
+    || people.length !== before.length || people.some(p => !before.includes(p));
+  const flush = () => { if (dirty) void actions.saveEvent(edited, people); };
   const save = () => {
-    void actions.saveEvent(draft, people);
+    void actions.saveEvent(edited, people);
     onClose();
   };
   const remove = () => {
@@ -36,6 +42,7 @@ export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () 
   // Une même activité peut être placée plusieurs fois : nouvelle occurrence, mêmes participants proposés.
   const placeAgain = () => {
     if (!activity) return;
+    flush();
     openSheet({
       kind: 'place',
       item: { key: '', activity, duration: event.duration, occurrence: nextOccurrence(state, activity.id, event.duration), personIds: people },
@@ -62,6 +69,7 @@ export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () 
       </Field>
       <div className="sheet-actions">
         <button className="danger" onClick={remove}>Retirer</button>
+        <button onClick={() => { flush(); openSheet({ kind: 'move', eventId: event.id }); }}>Déplacer…</button>
         <button onClick={placeAgain}>Placer à nouveau</button>
         <button className="primary" disabled={!priceOk} onClick={save}>Enregistrer</button>
       </div>

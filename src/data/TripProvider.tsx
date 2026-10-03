@@ -181,7 +181,7 @@ export function TripProvider({ code, children }: { code: string; children: React
     saveStay: st => mutate(s => {
       const isNew = !s.stays.some(x => x.id === st.id);
       const first = !s.stays.some(x => x.team_id === st.team_id && x.night_date === st.night_date);
-      return { ...s, stays: upsertBy(s.stays, isNew ? { ...st, chosen: first } : st, sameId) };
+      return { ...s, stays: upsertBy(s.stays, isNew ? { ...st, chosen: first } : { ...st, chosen: s.stays.find(x => x.id === st.id)!.chosen }, sameId) };
     }, () => api.upsertStay(st)),
     chooseStay: id => mutate(s => {
       const target = s.stays.find(x => x.id === id);
@@ -212,8 +212,8 @@ export function TripProvider({ code, children }: { code: string; children: React
   const retry = useCallback(() => void reload(), [reload]);
 
   const value = useMemo(
-    () => ({ status, state, online, me, setMe, toasts, dismissToast, actions, retry }),
-    [status, state, online, me, setMe, toasts, dismissToast, actions, retry],
+    () => ({ status, state, online, me, setMe, toasts, dismissToast, actions, retry, notify: pushToast }),
+    [status, state, online, me, setMe, toasts, dismissToast, actions, retry, pushToast],
   );
 
   return (

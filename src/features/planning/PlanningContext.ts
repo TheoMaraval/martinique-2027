@@ -8,16 +8,20 @@ export type SheetState =
   | { kind: 'team'; id: string | null }
   | { kind: 'quick'; teamId: string; idx: number }
   | { kind: 'place'; item: UnplacedItem }
+  | { kind: 'move'; eventId: string }
   | { kind: 'suggest' }
   | null;
 
 export interface PlanningCtx {
   openSheet(s: SheetState): void;
-  place(item: UnplacedItem, teamId: string, idx: number): void;
+  /** Place une envie ; false (avec message) si le créneau est refusé. */
+  place(item: UnplacedItem, teamId: string, idx: number): boolean;
+  /** Déplace une activité ; false (avec message) si le créneau est refusé. */
+  moveEvent(eventId: string, teamId: string, idx: number): boolean;
   alerts: Alert[];
 }
 
-export const PlanningContext = createContext<PlanningCtx>({ openSheet: () => {}, place: () => {}, alerts: [] });
+export const PlanningContext = createContext<PlanningCtx>({ openSheet: () => {}, place: () => false, moveEvent: () => false, alerts: [] });
 export const usePlanning = () => useContext(PlanningContext);
 
 export type DragData = { type: 'wish'; item: UnplacedItem } | { type: 'event'; eventId: string };

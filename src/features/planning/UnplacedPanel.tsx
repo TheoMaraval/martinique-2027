@@ -20,6 +20,12 @@ function UnplacedChip({ item }: { item: UnplacedItem }) {
       ref={setNodeRef} {...listeners} {...attributes}
       className={`unplaced-item ${n >= HOT_THRESHOLD ? 'hot' : ''} ${isDragging ? 'dragging' : ''}`}
       onClick={() => openSheet({ kind: 'place', item })}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openSheet({ kind: 'place', item });
+        }
+      }}
     >
       <strong>{item.activity.name}{item.activity.has_quantity ? ` n°${item.occurrence}` : ''}</strong>
       <span className="badge">Suggérée par {n}</span>
