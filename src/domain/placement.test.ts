@@ -27,9 +27,18 @@ describe('placement', () => {
   it('refuse les créneaux bloqués ou hors équipe', () => {
     const bt = makeTeam({ id: 'bt', start_date: '2027-04-17', start_part: 'matin', end_date: '2027-04-20', end_part: 'soir' });
     const st = makeState({ teams: [...s.teams, bt], team_members: members('bt', ['p1']) });
-    expect(canDrop(st, 'all', 0)).toBe(false);
-    expect(canDrop(st, 'bt', 3)).toBe(false);
-    expect(canDrop(st, 'bt', 6)).toBe(true);
+    expect(canDrop(st, 'all', 0, 'half')).toBe(false);
+    expect(canDrop(st, 'bt', 3, 'half')).toBe(false);
+    expect(canDrop(st, 'bt', 6, 'half')).toBe(true);
+  });
+
+  it('valide selon la durée', () => {
+    expect(canDrop(s, 'all', 30, 'evening')).toBe(false);
+    expect(canDrop(s, 'all', 5, 'half')).toBe(false);
+    expect(canDrop(s, 'all', 4, 'half')).toBe(true);
+    const late = makeTeam({ id: 'late', start_date: '2027-04-17', start_part: 'aprem', end_date: '2027-04-20', end_part: 'soir' });
+    const st = makeState({ teams: [...s.teams, late], team_members: members('late', ['p1']) });
+    expect(canDrop(st, 'late', 7, 'day')).toBe(false);
   });
 
   it('trouve la prochaine occurrence libre', () => {

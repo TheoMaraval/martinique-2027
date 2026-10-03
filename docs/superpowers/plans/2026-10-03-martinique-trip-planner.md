@@ -3909,14 +3909,14 @@ export function PlanningTab() {
   );
 
   const place = useCallback((item: UnplacedItem, teamId: string, idx: number) => {
-    if (!canDrop(state, teamId, idx)) return;
+    if (!canDrop(state, teamId, idx, item.duration)) return;
     const { event, participantIds } = buildPlacedEvent(state, item, teamId, idx, newId());
     void actions.saveEvent(event, participantIds);
   }, [state, actions]);
 
   const move = (eventId: string, teamId: string, idx: number) => {
     const e = state.events.find(x => x.id === eventId);
-    if (!e || !canDrop(state, teamId, idx)) return;
+    if (!e || !canDrop(state, teamId, idx, e.duration)) return;
     const start = normalizeStart(state.trip, e.duration, slotAt(state.trip, idx));
     void actions.saveEvent({ ...e, team_id: teamId, start_date: start.date, start_part: start.part });
   };
@@ -4416,7 +4416,8 @@ import { useReadyTrip } from '../../data/TripContext';
 import type { UnplacedItem } from '../../domain/unplaced';
 import { durationLabel } from '../../domain/durations';
 import { PART_LABEL, buildSlots } from '../../domain/slots';
-import { defaultTeam, teamCovers } from '../../domain/teams';
+import { defaultTeam } from '../../domain/teams';
+import { canDrop } from '../../domain/placement';
 import { formatDay } from '../../lib/format';
 import { Sheet } from '../../ui/Sheet';
 import { Field } from '../../ui/Field';
@@ -4425,10 +4426,8 @@ import { usePlanning } from './PlanningContext';
 export function PlaceSheet({ item, onClose }: { item: UnplacedItem; onClose: () => void }) {
   const { state } = useReadyTrip();
   const { place } = usePlanning();
-  const optionsFor = (teamId: string) => {
-    const team = state.teams.find(t => t.id === teamId)!;
-    return buildSlots(state.trip).filter(s => s.plannable && teamCovers(state, team, s.index));
-  };
+  const optionsFor = (teamId: string) =>
+    buildSlots(state.trip).filter(s => canDrop(state, teamId, s.index, item.duration));
   const [teamId, setTeamId] = useState(defaultTeam(state).id);
   const [idx, setIdx] = useState(() => optionsFor(defaultTeam(state).id)[0]?.index ?? -1);
   const options = optionsFor(teamId);

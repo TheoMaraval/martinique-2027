@@ -38,7 +38,7 @@ export function expensesByPerson(s: TripState): PersonExpense[] {
   }
   return s.people.map(p => {
     const r = acc.get(p.id)!;
-    const total = round(r.lodging + r.boat + r.activities);
+    const total = round(round(r.lodging) + round(r.boat) + round(r.activities));
     return {
       personId: p.id, lodging: round(r.lodging), boat: round(r.boat), activities: round(r.activities), total,
       budget: p.budget_max, delta: p.budget_max == null ? null : round(p.budget_max - total),

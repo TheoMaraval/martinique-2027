@@ -1,13 +1,19 @@
 import type { DurationKey, TripEvent, TripState } from './types';
 import type { UnplacedItem } from './unplaced';
 import { buildSlots, slotAt, slotIndex } from './slots';
-import { normalizeStart } from './durations';
+import { normalizeStart, spanOf } from './durations';
 import { rosterAt, teamCovers } from './teams';
 
-export function canDrop(s: TripState, teamId: string, idx: number): boolean {
+export function canDrop(s: TripState, teamId: string, idx: number, duration: DurationKey): boolean {
   const team = s.teams.find(t => t.id === teamId);
-  const slot = buildSlots(s.trip)[idx];
-  return !!team && !!slot && slot.plannable && teamCovers(s, team, idx);
+  const slots = buildSlots(s.trip);
+  const slot = slots[idx];
+  if (!team || !slot || !slot.plannable || !teamCovers(s, team, idx)) return false;
+  if (duration === 'half' && slot.part === 'soir') return false;
+  const start = normalizeStart(s.trip, duration, slotAt(s.trip, idx));
+  const si = slotIndex(s.trip, start.date, start.part);
+  if (!slots[si]?.plannable || !teamCovers(s, team, si)) return false;
+  return spanOf(s.trip, duration, start).slots.length > 0;
 }
 
 export function buildPlacedEvent(
