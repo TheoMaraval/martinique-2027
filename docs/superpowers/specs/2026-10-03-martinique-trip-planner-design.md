@@ -70,8 +70,10 @@ Navigation par onglets en bas d'écran : **Envies**, **Planning**, **Road-book**
 - Sur chaque carte : je coche « Ça me tente », je choisis **une durée** parmi les durées possibles, et pour les activités avec quantité (Randonnée), je choisis **combien** (1–10).
 - Une personne peut exprimer plusieurs envies pour une même activité avec des durées différentes (ex. Plage demi-journée ×1 et Plage journée ×1) : chaque couple (activité, durée) est une envie distincte.
 - Pastilles des prénoms intéressés sur chaque carte, par durée (ex. « 4j/3n : Théo, Jules, Inès »).
+- **Multiplicateur de succès** : chaque carte affiche un badge **×N** = nombre de personnes distinctes ayant suggéré l'activité (toutes durées confondues). Dans chaque catégorie, les cartes sont triées par ×N décroissant.
+- **Top des envies** : en haut de l'onglet, un classement compact de toutes les activités suggérées, par ×N décroissant, pour voir d'un coup d'œil ce qui a le plus de succès.
 - Chaque activité du catalogue peut porter une description et des **liens** (URL + libellé) visibles par tous.
-- **Ajouter une activité** : nom, catégorie (existante ou « Autre »), durées possibles (cases à cocher parmi demi-journée / journée / soir / multi-jours avec nb jours et nb nuits), quantité oui/non, description, liens. Elle rejoint le catalogue commun. Seul son créateur peut la supprimer, et seulement si aucune activité planifiée n'y est rattachée.
+- **Ajouter une activité** (depuis l'onglet Envies **ou depuis le Planning**) : nom, catégorie (existante ou nouvelle), durées possibles (cases à cocher parmi demi-journée / journée / soir / multi-jours avec nb jours et nb nuits), quantité oui/non, description, liens. Elle rejoint le catalogue commun de l'onglet Envies et **compte automatiquement comme une envie de son créateur** (première durée, ×1) ; elle apparaît donc aussitôt dans « À placer ». Seul son créateur peut la supprimer, et seulement si aucune activité planifiée n'y est rattachée.
 
 ### Onglet 2 — Planning
 
@@ -88,7 +90,8 @@ Navigation par onglets en bas d'écran : **Envies**, **Planning**, **Road-book**
 
 **Activités à placer — mises en avant en permanence**
 - Panneau **toujours visible** sur l'onglet Planning (colonne latérale sur grand écran, bandeau repliable en bas sur mobile, ouvert par défaut), pour ne pas avoir à retourner sur l'onglet Envies.
-- Liste les envies **non encore placées**, regroupées par (activité, durée), triées par **nombre de personnes intéressées décroissant**.
+- Liste les envies **non encore placées**, regroupées par (activité, durée), triées par **nombre de personnes intéressées décroissant**, puis par multiplicateur de succès ×N de l'activité.
+- Bouton **« + Suggérer une nouvelle activité »** dans le panneau : même formulaire que l'onglet Envies (voir ci-dessus).
 - Chaque élément affiche un badge bien visible **« Suggérée par N »** et les prénoms concernés. Les éléments à N ≥ 3 sont surlignés (couleur d'accent).
 - Une envie avec quantité (ex. Randonnée ×3) génère autant d'éléments que la quantité maximale demandée ; chaque élément affiche les prénoms qui en veulent au moins autant (rando n°1 : tous ceux qui en veulent ≥1, rando n°2 : ≥2, etc.).
 - Un élément disparaît du panneau quand il a été placé (une activité planifiée y est rattachée). Il réapparaît si l'activité planifiée est supprimée.
@@ -99,6 +102,7 @@ Navigation par onglets en bas d'écran : **Envies**, **Planning**, **Road-book**
 - Sur mobile, un simple appui sur un élément du panneau ouvre « Placer… » (choix de l'équipe et du créneau) en alternative au glisser-déposer.
 - Une activité planifiée peut être redéplacée (autre créneau / autre équipe) ou supprimée.
 - On peut aussi créer une activité planifiée directement dans un créneau (bouton « + ») à partir du catalogue, sans envie préalable.
+- **Une même activité peut être placée plusieurs fois** (ex. deux sessions de surf, plusieurs plages) : via le bouton « + » d'un créneau (tout le catalogue, sans limite), ou via **« Placer à nouveau »** dans la fiche d'une activité déjà placée (nouvelle occurrence, mêmes participants proposés, choix de l'équipe et du créneau).
 
 **Fiche activité planifiée** (clic sur l'activité)
 - **Participants** : préremplis avec les membres de l'équipe qui avaient suggéré l'activité (ou toute l'équipe si aucun d'eux n'y est) ; modifiables (ajout/retrait).
@@ -109,7 +113,9 @@ Navigation par onglets en bas d'écran : **Envies**, **Planning**, **Road-book**
 - Notes libres.
 
 **Ligne Nuit (logement)**
-- Pour chaque nuit et chaque équipe présente cette nuit-là : ville / nom du logement, point GPS, prix + mode (total/par personne), liens, notes.
+- Pour chaque nuit et chaque équipe présente cette nuit-là, on peut proposer **plusieurs options de logement** (phase brainstorm) : ville / nom du logement, point GPS, prix + mode (total/par personne), **liens vers le logement**, notes.
+- On **retient une seule option** par équipe et par nuit (bouton radio « Retenu »). La première option proposée est retenue par défaut. Seule l'option retenue compte dans les dépenses, les alertes et le road-book.
+- Affichage dans la grille : **« Nuit à <logement> »** + icône lien vers le logement retenu ; sinon « N options — à choisir » ; sinon « + Logement ».
 - Pendant une activité multi-jours, la nuit de l'équipe concernée est automatiquement « À bord » (catégorie Bateau) ou « Inclus » (autres) — calculé, pas stocké ; prix inclus dans l'activité.
 
 **Alertes** (surlignage orange + liste en haut du planning)
@@ -118,7 +124,7 @@ Navigation par onglets en bas d'écran : **Envies**, **Planning**, **Road-book**
 
 ### Onglet 3 — Road-book
 
-- **Récap jour par jour** propre et lisible : pour chaque jour, chaque équipe avec ses activités (créneau, nom, lieu, participants, liens), puis le logement de la nuit.
+- **Récap jour par jour** propre et lisible : pour chaque jour, chaque équipe avec ses activités (créneau, nom, lieu, participants, liens), puis **« Nuit à <logement retenu> »** avec ses liens (ou « Nuit à bord »).
 - Filtre **« Mon parcours »** : n'affiche que ce que fait la personne connectée.
 - **Carte d'itinéraire** Leaflet : points GPS des activités et logements, reliés dans l'ordre chronologique, une couleur par équipe ; respecte le filtre.
 - **Résumé des dépenses condensé** :
@@ -143,11 +149,11 @@ Toutes les tables portent `trip_id` (y compris les tables de liaison) pour des c
 | `events` | `id`, `trip_id`, `team_id`, `activity_id`, `duration` (text), `occurrence` (int, pour quantités), `start_date`, `start_part`, `place_name`, `lat`, `lng`, `price`, `price_mode` (`total`/`per_person`), `links` (jsonb), `notes` |
 | `event_participants` | `event_id`, `person_id` |
 | `event_comments` | `id`, `event_id`, `author_id` (→ people), `body`, `created_at` |
-| `stays` | `id`, `trip_id`, `team_id`, `night_date`, `place_name`, `lat`, `lng`, `price`, `price_mode`, `links` (jsonb), `notes` — unique (`team_id`, `night_date`) |
+| `stays` | `id`, `trip_id`, `team_id`, `night_date`, `place_name`, `lat`, `lng`, `price`, `price_mode`, `links` (jsonb), `notes`, `chosen` (bool) — plusieurs options par (`team_id`, `night_date`), au plus une `chosen` (index unique partiel) |
 
 - Un élément « à placer » est considéré placé lorsqu'il existe un `event` avec même `activity_id`, même `duration` et même `occurrence`.
 - Script de seed : le voyage (code secret généré), les 10 personnes, le catalogue initial, l'équipe par défaut « Tout le groupe ».
-- RPC : `get_trip(code)` (charge tout l'état), et une RPC par écriture (`upsert_wish`, `delete_wish`, `set_budget`, `upsert_activity`, `upsert_team`, `set_team_members`, `upsert_event`, `delete_event`, `set_event_participants`, `add_comment`, `delete_comment`, `upsert_stay`, …), toutes vérifiant `code`.
+- RPC : `get_trip(code)` (charge tout l'état), et une RPC par écriture (`upsert_wish`, `delete_wish`, `set_budget`, `upsert_activity`, `upsert_team`, `set_team_members`, `upsert_event`, `delete_event`, `set_event_participants`, `add_comment`, `delete_comment`, `upsert_stay`, `choose_stay`, `delete_stay`, …), toutes vérifiant `code`.
 
 ## Logique métier (fonctions pures, testées)
 
@@ -155,6 +161,7 @@ Toutes les tables portent `trip_id` (y compris les tables de liaison) pour des c
 - `spanOf(duration, startSlot)` : créneaux et nuits occupés.
 - `unplacedItems(wishes, events, activities)` : éléments à placer avec « suggérée par N » et prénoms, triés.
 - `conflicts(events, participants, stays, teams)` : chevauchements et nuits sans logement.
+- `popularity(state)` : par activité, nombre de personnes distinctes l'ayant suggérée (×N).
 - `shareOf(price, mode, nbParticipants)` : `mode === 'total' ? price / nb : price` (0 si pas de prix ou 0 participant).
 - `expensesByPerson(...)` : par personne, sommes Logements / Bateau (catégorie Bateau) / Activités, total, écart au budget.
 
