@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import L from 'leaflet';
+import { Map as MapIcon } from 'lucide-react';
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet';
 import type { RoutePoint } from '../../domain/itinerary';
 import { OSM_ATTRIBUTION, OSM_URL } from '../../ui/MapPicker';
@@ -16,7 +17,7 @@ export function RouteMap({ points }: { points: RoutePoint[] }) {
   if (!points.length) {
     return (
       <section className="card">
-        <h2>Carte de l'itinéraire</h2>
+        <h2 className="card-title"><MapIcon size={20} /> Carte de l'itinéraire</h2>
         <p className="muted">Ajoute des points GPS aux activités et logements du planning pour voir l'itinéraire.</p>
       </section>
     );
@@ -25,7 +26,7 @@ export function RouteMap({ points }: { points: RoutePoint[] }) {
   for (const p of points) byTeam.set(p.teamId, [...(byTeam.get(p.teamId) ?? []), p]);
   return (
     <section className="card">
-      <h2>Carte de l'itinéraire</h2>
+      <h2 className="card-title"><MapIcon size={20} /> Carte de l'itinéraire</h2>
       <MapContainer center={[points[0].lat, points[0].lng]} zoom={10} className="map map-route">
         <TileLayer url={OSM_URL} attribution={OSM_ATTRIBUTION} />
         <FitBounds points={points} />

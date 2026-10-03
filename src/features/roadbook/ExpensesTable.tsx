@@ -1,3 +1,4 @@
+import { Wallet } from 'lucide-react';
 import { useReadyTrip } from '../../data/TripContext';
 import { expensesByPerson } from '../../domain/expenses';
 import { firstName, formatEuros } from '../../lib/format';
@@ -8,7 +9,7 @@ export function ExpensesTable({ highlight }: { highlight: string }) {
   const sum = (k: 'lodging' | 'boat' | 'activities' | 'total') => rows.reduce((acc, r) => acc + r[k], 0);
   return (
     <section className="card">
-      <h2>Dépenses estimées</h2>
+      <h2 className="card-title"><Wallet size={20} /> Dépenses estimées</h2>
       <p className="muted">Logements + bateau + grosses activités. Hors restaurants et sorties gratuites (randonnées, plages…).</p>
       <div className="table-scroll">
         <table className="expenses">
@@ -24,8 +25,12 @@ export function ExpensesTable({ highlight }: { highlight: string }) {
                 <td>{formatEuros(r.activities)}</td>
                 <td><strong>{formatEuros(r.total)}</strong></td>
                 <td>{r.budget == null ? '—' : formatEuros(r.budget)}</td>
-                <td className={r.delta == null ? '' : r.delta >= 0 ? 'ok' : 'over'}>
-                  {r.delta == null ? '—' : `${r.delta >= 0 ? '+' : ''}${formatEuros(r.delta)}`}
+                <td>
+                  {r.delta == null ? '—' : (
+                    <span className={`delta ${r.delta >= 0 ? 'ok' : 'over'}`}>
+                      {r.delta >= 0 ? '+' : '−'}{formatEuros(Math.abs(r.delta))}
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}

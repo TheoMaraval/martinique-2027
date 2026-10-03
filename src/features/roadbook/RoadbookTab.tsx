@@ -13,8 +13,10 @@ export function RoadbookTab() {
   const points = useMemo(() => routePoints(state, personId), [state, personId]);
   return (
     <div className="roadbook">
-      <label className="toggle">
-        <input type="checkbox" checked={mine} onChange={e => setMine(e.target.checked)} /> Mon parcours uniquement
+      <label className="toggle switch">
+        <input type="checkbox" role="switch" checked={mine} onChange={e => setMine(e.target.checked)} />
+        <span className="switch-track" aria-hidden="true"><span className="switch-thumb" /></span>
+        <span>Mon parcours uniquement</span>
       </label>
       <ExpensesTable highlight={me} />
       <RouteMap points={points} />
