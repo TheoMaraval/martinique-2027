@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { Check, Plus, X } from 'lucide-react';
 import { useReadyTrip } from '../../data/TripContext';
 import type { Link } from '../../domain/types';
 import { compareDurations, durationLabel, multiKey } from '../../domain/durations';
@@ -69,23 +70,26 @@ export function AddActivityForm({ onDone }: { onDone: () => void }) {
         )}
       </Field>
       <Field label="Durées possibles">
-        {BASE_DURATIONS.map(k => (
-          <label key={k} className="check">
-            <input type="checkbox" checked={durations.includes(k)} onChange={() => toggle(k)} />
-            {durationLabel(k)}
-          </label>
-        ))}
-        <div className="row">
+        <div className="pill-group">
+          {BASE_DURATIONS.map(k => (
+            <label key={k} className={`pill-toggle ${durations.includes(k) ? 'on' : ''}`}>
+              <input type="checkbox" checked={durations.includes(k)} onChange={() => toggle(k)} />
+              {durations.includes(k) && <Check size={16} strokeWidth={2.5} />}
+              {durationLabel(k)}
+            </label>
+          ))}
+        </div>
+        <div className="row multi-row">
           <input aria-label="Nombre de jours" type="number" min={1} max={10} value={days} onChange={e => setDays(Number(e.target.value))} />
           <span>jours</span>
           <input aria-label="Nombre de nuits" type="number" min={0} max={10} value={nights} onChange={e => setNights(Number(e.target.value))} />
           <span>nuits</span>
-          <button type="button" onClick={addMulti}>+ Multi-jours</button>
+          <button type="button" onClick={addMulti}><Plus size={18} /> Multi-jours</button>
         </div>
         {durations.filter(d => d.startsWith('multi:')).map(d => (
           <span key={d} className="chip">
             {durationLabel(d)}{' '}
-            <button type="button" className="icon-btn" aria-label={`Retirer ${durationLabel(d)}`} onClick={() => toggle(d)}>×</button>
+            <button type="button" className="icon-btn" aria-label={`Retirer ${durationLabel(d)}`} onClick={() => toggle(d)}><X size={16} /></button>
           </span>
         ))}
       </Field>

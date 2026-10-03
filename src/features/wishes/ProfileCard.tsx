@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Wallet } from 'lucide-react';
 import { useReadyTrip } from '../../data/TripContext';
 import { parsePrice } from '../../domain/validation';
+import { Avatar } from '../../ui/Avatar';
 
 export function ProfileCard() {
   const { state, me, actions } = useReadyTrip();
@@ -16,10 +18,16 @@ export function ProfileCard() {
   };
   return (
     <section className="card profile">
-      <h2>Mon profil — {person.name}</h2>
-      <label className="field">
-        <span className="field-label">Mon budget max (€)</span>
-        <input inputMode="decimal" placeholder="ex. 1500" value={text} onChange={e => setText(e.target.value)} onBlur={commit} />
+      <div className="profile-head">
+        <Avatar name={person.name} size="lg" />
+        <h2>Mon profil — {person.name}</h2>
+      </div>
+      <label className="field budget-field">
+        <span className="field-label"><Wallet size={16} /> Mon budget max (€)</span>
+        <span className="budget-input">
+          <input inputMode="decimal" placeholder="ex. 1500" value={text} onChange={e => setText(e.target.value)} onBlur={commit} />
+          <span className="budget-unit" aria-hidden="true">€</span>
+        </span>
       </label>
       {error && <p className="error" role="alert">{error}</p>}
       <p className="muted">
