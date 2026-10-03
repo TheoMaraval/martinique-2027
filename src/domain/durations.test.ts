@@ -1,4 +1,4 @@
-import { durationLabel, multiKey, normalizeStart, parseDuration, spanOf } from './durations';
+import { compareDurations, durationLabel, multiKey, normalizeStart, parseDuration, spanOf } from './durations';
 import { TRIP } from '../test/fixtures';
 
 describe('durations', () => {
@@ -43,4 +43,9 @@ describe('durations', () => {
     expect(s.slots).toEqual([24, 25, 26, 27, 28, 29, 30]);
     expect(s.nights).toEqual(['2027-04-23', '2027-04-24']);
   });
+});
+
+it('trie les durées dans l ordre canonique', () => {
+  expect(['multi:3:2', 'evening', 'multi:2:2', 'day', 'multi:2:1', 'half'].sort(compareDurations))
+    .toEqual(['half', 'day', 'evening', 'multi:2:1', 'multi:2:2', 'multi:3:2']);
 });

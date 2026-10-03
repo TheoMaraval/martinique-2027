@@ -47,3 +47,16 @@ describe('ActivityCard', () => {
     expect(screen.getByLabelText('Suggérée par 2 personne(s)')).toHaveTextContent('×2');
   });
 });
+
+describe('ActivityCard suppression', () => {
+  const custom = { ...surf, id: 'perso', name: 'Perso', is_custom: true, created_by: 'p1' };
+  it('affiche la corbeille pour une activité perso non planifiée', () => {
+    renderWithTrip(<ActivityCard activity={custom} />);
+    expect(screen.getByLabelText('Supprimer Perso')).toBeInTheDocument();
+  });
+  it('masque la corbeille si l\'activité est au planning', () => {
+    const state = makeState({ events: [{ id: 'e1', trip_id: 'trip', activity_id: 'perso' } as never] });
+    renderWithTrip(<ActivityCard activity={custom} />, { state });
+    expect(screen.queryByLabelText('Supprimer Perso')).toBeNull();
+  });
+});

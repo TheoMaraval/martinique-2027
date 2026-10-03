@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useReadyTrip } from '../../data/TripContext';
 import type { Link } from '../../domain/types';
-import { durationLabel, multiKey } from '../../domain/durations';
+import { compareDurations, durationLabel, multiKey } from '../../domain/durations';
 import { newId } from '../../lib/ids';
 import { LinksEditor } from '../../ui/Links';
 import { Field } from '../../ui/Field';
@@ -33,18 +33,22 @@ export function AddActivityForm({ onDone }: { onDone: () => void }) {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const cat = category === NEW_CATEGORY ? newCategory.trim() : category;
+    const typed = newCategory.trim();
+    const cat = category === NEW_CATEGORY
+      ? (categories.find(c => c.toLowerCase() === typed.toLowerCase()) ?? typed)
+      : category;
     if (!name.trim()) return setError("Donne un nom à l'activité");
     if (!cat) return setError('Choisis une catégorie');
-    if (!durations.length) return setError('Choisis au moins une durée');
+    if (!durations.length) return setError('Choisis au moins une durée (pour un multi-jours, clique « + Multi-jours »)');
     const activityId = newId();
+    const sorted = [...durations].sort(compareDurations);
     void actions.saveActivity(
       {
-        id: activityId, trip_id: state.trip.id, name: name.trim(), category: cat, durations,
+        id: activityId, trip_id: state.trip.id, name: name.trim(), category: cat, durations: sorted,
         has_quantity: hasQuantity, description: description.trim(), links, is_custom: true, created_by: me,
       },
       // La suggestion compte comme une envie de son créateur (première durée, ×1).
-      { id: newId(), trip_id: state.trip.id, person_id: me, activity_id: activityId, duration: durations[0], quantity: 1 },
+      { id: newId(), trip_id: state.trip.id, person_id: me, activity_id: activityId, duration: sorted[0], quantity: 1 },
     );
     onDone();
   };

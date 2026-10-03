@@ -21,6 +21,18 @@ export function parseDuration(key: DurationKey): ParsedDuration {
 
 export const multiKey = (days: number, nights: number): DurationKey => `multi:${days}:${nights}`;
 
+const DURATION_RANK: Record<string, number> = { half: 0, day: 1, evening: 2 };
+
+/** Ordre canonique : half, day, evening, puis multi-jours triés par jours puis nuits. */
+export function compareDurations(a: DurationKey, b: DurationKey): number {
+  const pa = parseDuration(a);
+  const pb = parseDuration(b);
+  if (pa.kind !== 'multi' && pb.kind !== 'multi') return DURATION_RANK[pa.kind] - DURATION_RANK[pb.kind];
+  if (pa.kind !== 'multi') return -1;
+  if (pb.kind !== 'multi') return 1;
+  return pa.days - pb.days || pa.nights - pb.nights;
+}
+
 export function durationLabel(key: DurationKey): string {
   const p = parseDuration(key);
   if (p.kind === 'half') return 'Demi-journée';

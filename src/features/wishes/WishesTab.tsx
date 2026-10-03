@@ -28,7 +28,7 @@ export function WishesTab() {
           <h2>Top des envies</h2>
           <ol>
             {top.map(a => (
-              <li key={a.id}>{a.name} <span className="pop-badge">×{pop.get(a.id)}</span></li>
+              <li key={a.id}>{a.name} <span className="pop-badge" aria-label={`Suggérée par ${pop.get(a.id)} personne(s)`}>×{pop.get(a.id)}</span></li>
             ))}
           </ol>
         </section>

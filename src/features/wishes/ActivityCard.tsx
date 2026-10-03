@@ -8,7 +8,7 @@ import { LinkList } from '../../ui/Links';
 export function ActivityCard({ activity }: { activity: Activity }) {
   const { state, me, actions } = useReadyTrip();
   const nameOf = (id: string) => firstName(state.people.find(p => p.id === id)?.name ?? '?');
-  const canDelete = activity.is_custom && activity.created_by === me;
+  const canDelete = activity.is_custom && activity.created_by === me && !state.events.some(e => e.activity_id === activity.id);
   const pop = new Set(state.wishes.filter(w => w.activity_id === activity.id).map(w => w.person_id)).size;
   return (
     <article className="card activity-card">
