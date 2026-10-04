@@ -55,3 +55,20 @@ Origine : retour du groupe (« pique-nique demi-journée c'est chelou, il faudra
 
 ## Tests
 TDD sur : créneaux à 4 parts et blocages, emprise flex/multi, capacité et `canDrop`/`canResize`, alertes avec capacité, conversion des clés legacy, dépenses (repas exclus, activité au midi incluse), itinéraire avec repas, envies « Ça me tente », formulaire d'ajout simple/multi, fiche repas.
+
+## Évolution — 3 activités par créneau, enregistrement automatique (2026-10-04)
+Remplace les points 3 (capacité) et « Alerte de chevauchement » ci-dessus.
+
+**Capacité**
+- `SLOT_CAPACITY = { matin: 3, midi: 3, aprem: 3, soir: 3 }` : jusqu'à 3 activités par équipe dans chaque créneau. Les activités d'un même créneau sont considérées **à la suite** (pas d'alerte entre elles).
+- Alerte de chevauchement : seulement quand une personne a **plus de 3** activités sur un créneau.
+- Case du planning : numérotation « 1. » « 2. » « 3. » dès 2 activités ; « + » masqué quand la case est pleine.
+
+**Enregistrement automatique des fiches** (activité, logement, repas)
+- Hook `useAutosave(value, save, { delay, enabled, isEqual })` (`src/lib/useAutosave.ts`) → `{ status, flush, cancel }` : enregistre après **600 ms** sans modification, et immédiatement à la fermeture de la fiche (bouton Fermer, ✕, Échap, clic sur le fond : enregistrement au démontage) ou avant d'ouvrir une autre fiche (« Déplacer… », « Placer à nouveau » ; chaque ouverture de fiche est une nouvelle instance). `save(next, previous)` reçoit la dernière valeur enregistrée. `cancel` avant une suppression (Retirer / Supprimer) pour ne pas recréer l'élément.
+- Prix invalide → rien n'est enregistré, l'erreur reste affichée.
+- Plus de bouton « Enregistrer » : indicateur `aria-live="polite"` « Enregistrement… » puis « ✓ Enregistré » (en-tête de la fiche ; dans l'éditeur d'option pour les logements). Le pied garde les actions destructives et « Fermer ».
+- Fiche activité : seuls les champs modifiés **depuis le dernier enregistrement** sont appliqués sur la dernière version de l'activité (synchro temps réel) ; participants seulement s'ils ont été modifiés. L'horaire s'enregistre toujours à chaque choix.
+- Logements : une nouvelle option n'est créée qu'avec un nom de lieu, un lien ou un prix, puis elle est mise à jour ; « Terminé » ferme l'éditeur. « + Proposer un logement » et le choix par bouton radio sont inchangés.
+- Repas : créé dès qu'un champ est rempli ; « Supprimer » inchangé.
+- Restent explicites : fiche équipe (création, changements de dates avec confirmation) et formulaire d'ajout d'activité. Le budget du profil s'enregistre aussi pendant la saisie (600 ms, montants valides) et à la sortie du champ.

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState, type MutableRefObject } from 'react';
 import { Plus } from 'lucide-react';
 import { useReadyTrip } from '../../data/TripContext';
 import type { Stay, TripState } from '../../domain/types';
@@ -6,7 +6,9 @@ import { slotIndex } from '../../domain/slots';
 import { rosterAt } from '../../domain/teams';
 import { formatDay, formatEuros } from '../../lib/format';
 import { newId } from '../../lib/ids';
+import { useAutosave } from '../../lib/useAutosave';
 import { Sheet } from '../../ui/Sheet';
+import { SaveStatus } from '../../ui/SaveStatus';
 import { Field } from '../../ui/Field';
 import { PlaceField } from '../../ui/PlaceField';
 import { PriceField } from '../../ui/PriceField';
@@ -17,17 +19,24 @@ const emptyOption = (s: TripState, teamId: string, night: string): Stay => ({
   lat: null, lng: null, price: null, price_mode: 'total', links: [], notes: '', chosen: false,
 });
 
+/** Une nouvelle option n'est créée qu'avec un nom de lieu, un lien ou un prix. */
+const worthCreating = (o: Stay) => !!o.place_name.trim() || o.links.length > 0 || o.price != null;
+
 export function StaySheet({ teamId, night, onClose }: { teamId: string; night: string; onClose: () => void }) {
   const { state, actions } = useReadyTrip();
   const options = state.stays.filter(st => st.team_id === teamId && st.night_date === night);
   const [editing, setEditing] = useState<Stay | null>(() => (options.length ? null : emptyOption(state, teamId, night)));
-  const [priceOk, setPriceOk] = useState(true);
+  const cancelEdit = useRef<(() => void) | null>(null);
   const team = state.teams.find(t => t.id === teamId);
   const roster = rosterAt(state, teamId, slotIndex(state.trip, night, 'soir'));
-  const save = () => {
-    if (!editing) return;
-    void actions.saveStay(editing);
-    setEditing(null);
+  const remove = (o: Stay) => {
+    if (!confirm('Supprimer cette option ?')) return;
+    // L'option en cours de modification ne doit pas être ré-enregistrée à la fermeture de l'éditeur.
+    if (editing?.id === o.id) {
+      cancelEdit.current?.();
+      setEditing(null);
+    }
+    void actions.deleteStay(o.id);
   };
   return (
     <Sheet title={`Nuit du ${formatDay(night)}`} onClose={onClose}>
@@ -52,37 +61,66 @@ export function StaySheet({ teamId, night, onClose }: { teamId: string; night: s
               {o.notes && <p className="muted">{o.notes}</p>}
               <div className="row">
                 <button type="button" onClick={() => setEditing(o)}>Modifier</button>
-                <button type="button" className="danger" onClick={() => { if (confirm('Supprimer cette option ?')) void actions.deleteStay(o.id); }}>Supprimer</button>
+                <button type="button" className="danger" onClick={() => remove(o)}>Supprimer</button>
               </div>
             </li>
           ))}
         </ul>
       )}
       {editing ? (
-        <div className="card">
-          <h3>{options.some(o => o.id === editing.id) ? "Modifier l'option" : 'Nouvelle option'}</h3>
-          <Field label="Ville / logement">
-            <PlaceField key={editing.id} value={{ place_name: editing.place_name, lat: editing.lat, lng: editing.lng }}
-              onChange={v => setEditing(d => d && { ...d, ...v })} />
-          </Field>
-          <Field label="Prix">
-            <PriceField key={editing.id} price={editing.price} mode={editing.price_mode} participants={roster.length} onValidity={setPriceOk}
-              onChange={(price, price_mode) => setEditing(d => d && { ...d, price, price_mode })} />
-          </Field>
-          <Field label="Liens vers le logement">
-            <LinksEditor links={editing.links} onChange={links => setEditing(d => d && { ...d, links })} />
-          </Field>
-          <Field label="Notes">
-            <textarea aria-label="Notes" rows={2} value={editing.notes} onChange={e => setEditing(d => d && { ...d, notes: e.target.value })} />
-          </Field>
-          <div className="sheet-actions">
-            <button type="button" onClick={() => setEditing(null)}>Annuler</button>
-            <button type="button" className="primary" disabled={!priceOk} onClick={save}>Enregistrer l'option</button>
-          </div>
-        </div>
+        <OptionEditor key={editing.id} initial={editing} isNew={!options.some(o => o.id === editing.id)} participants={roster.length}
+          cancelRef={cancelEdit} onDone={() => setEditing(null)} />
       ) : (
         <button className="wide" onClick={() => setEditing(emptyOption(state, teamId, night))}><Plus size={18} /> Proposer un logement</button>
       )}
+      <div className="sheet-actions">
+        <span />
+        <button onClick={onClose}>Fermer</button>
+      </div>
     </Sheet>
+  );
+}
+
+/**
+ * Éditeur d'une option, enregistré automatiquement : une nouvelle option est créée au premier
+ * enregistrement utile (lieu, lien ou prix), puis mise à jour. Changer d'option ou fermer enregistre.
+ */
+function OptionEditor({ initial, isNew, participants, cancelRef, onDone }: {
+  initial: Stay; isNew: boolean; participants: number;
+  cancelRef: MutableRefObject<(() => void) | null>; onDone: () => void;
+}) {
+  const { actions } = useReadyTrip();
+  const [draft, setDraft] = useState(initial);
+  const [priceOk, setPriceOk] = useState(true);
+  const [created, setCreated] = useState(false);
+  const autosave = useAutosave(draft, next => {
+    setCreated(true);
+    return actions.saveStay(next);
+  }, { enabled: priceOk && (!isNew || created || worthCreating(draft)) });
+  cancelRef.current = autosave.cancel;
+  return (
+    <div className="card">
+      <div className="editor-head">
+        <h3>{isNew && !created ? 'Nouvelle option' : "Modifier l'option"}</h3>
+        <SaveStatus status={autosave.status} />
+      </div>
+      <Field label="Ville / logement">
+        <PlaceField value={{ place_name: draft.place_name, lat: draft.lat, lng: draft.lng }}
+          onChange={v => setDraft(d => ({ ...d, ...v }))} />
+      </Field>
+      <Field label="Prix">
+        <PriceField price={draft.price} mode={draft.price_mode} participants={participants} onValidity={setPriceOk}
+          onChange={(price, price_mode) => setDraft(d => ({ ...d, price, price_mode }))} />
+      </Field>
+      <Field label="Liens vers le logement">
+        <LinksEditor links={draft.links} onChange={links => setDraft(d => ({ ...d, links }))} />
+      </Field>
+      <Field label="Notes">
+        <textarea aria-label="Notes" rows={2} value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} />
+      </Field>
+      <div className="row">
+        <button type="button" onClick={onDone}>Terminé</button>
+      </div>
+    </div>
   );
 }

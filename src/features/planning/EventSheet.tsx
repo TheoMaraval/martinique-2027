@@ -6,7 +6,9 @@ import { nextOccurrence, resizeOptions, resizedEvent } from '../../domain/placem
 import { PART_LABEL, buildSlots } from '../../domain/slots';
 import { withFormula } from '../../lib/labels';
 import { formatDay } from '../../lib/format';
+import { useAutosave } from '../../lib/useAutosave';
 import { Sheet } from '../../ui/Sheet';
+import { SaveStatus } from '../../ui/SaveStatus';
 import { Field } from '../../ui/Field';
 import { PeoplePicker } from '../../ui/PeoplePicker';
 import { PlaceField } from '../../ui/PlaceField';
@@ -15,46 +17,47 @@ import { LinksEditor } from '../../ui/Links';
 import { CommentsThread } from './CommentsThread';
 import { usePlanning } from './PlanningContext';
 
+// Champs de la fiche enregistrés automatiquement (l'horaire, lui, s'enregistre à chaque choix).
+const FIELDS = ['place_name', 'lat', 'lng', 'price', 'price_mode', 'links', 'notes'] as const;
+
 export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () => void }) {
   const { state, actions } = useReadyTrip();
   const { openSheet } = usePlanning();
   const event = state.events.find(e => e.id === eventId);
-  const [initial] = useState(event);
   const [draft, setDraft] = useState(event);
   const [peopleTouched, setPeopleTouched] = useState(false);
   const [people, setPeople] = useState(() => participantsOf(state, eventId));
   const [priceOk, setPriceOk] = useState(true);
+  const value = draft ? { fields: Object.fromEntries(FIELDS.map(k => [k, draft[k]])), people, peopleTouched } : null;
+  // On n'applique que les champs modifiés depuis le dernier enregistrement, par-dessus la dernière
+  // version de l'activité (synchro temps réel) ; les participants seulement s'ils ont été modifiés.
+  const autosave = useAutosave(value, (next, prev) => {
+    if (!event || !next || !prev) return;
+    const patch = Object.fromEntries(FIELDS.filter(k => JSON.stringify(next.fields[k]) !== JSON.stringify(prev.fields[k])).map(k => [k, next.fields[k]]));
+    const participants = next.peopleTouched && JSON.stringify(next.people) !== JSON.stringify(prev.people) ? next.people : undefined;
+    if (!Object.keys(patch).length && !participants) return;
+    return actions.saveEvent({ ...event, ...patch }, participants);
+  }, { enabled: priceOk && !!event });
   if (!event || !draft) return null;
   const activity = state.activities.find(a => a.id === event.activity_id);
   const team = state.teams.find(t => t.id === event.team_id);
-  // On n'applique que les champs réellement modifiés, par-dessus la dernière version (synchro temps réel).
-  const FIELDS = ['place_name', 'lat', 'lng', 'price', 'price_mode', 'links', 'notes'] as const;
-  const patch: Partial<typeof draft> = {};
-  if (initial) for (const k of FIELDS) if (JSON.stringify(draft[k]) !== JSON.stringify(initial[k])) Object.assign(patch, { [k]: draft[k] });
-  const edited = { ...event, ...patch };
-  const participants = peopleTouched ? people : undefined;
-  const dirty = Object.keys(patch).length > 0 || peopleTouched;
-  const flush = () => { if (dirty && priceOk) void actions.saveEvent(edited, participants); };
-  const save = () => {
-    void actions.saveEvent(edited, participants);
-    onClose();
-  };
   const remove = () => {
     if (!confirm('Retirer cette activité du planning ? Elle reviendra dans « À placer ».')) return;
+    autosave.cancel();
     void actions.deleteEvent(event.id);
     onClose();
   };
   // Une même activité peut être placée plusieurs fois : nouvelle occurrence, mêmes participants proposés.
   const placeAgain = () => {
     if (!activity) return;
-    flush();
+    autosave.flush();
     openSheet({
       kind: 'place',
       item: { key: '', activity, duration: event.duration, occurrence: nextOccurrence(state, activity.id, event.duration), total: 1, personIds: people },
     });
   };
   return (
-    <Sheet title={withFormula(activity?.name ?? 'Activité', event.duration)} onClose={onClose}>
+    <Sheet title={withFormula(activity?.name ?? 'Activité', event.duration)} onClose={onClose} status={<SaveStatus status={autosave.status} />}>
       <p className="muted">{team?.name} · {formatDay(event.start_date)} · {PART_LABEL[event.start_part]}</p>
       {isFlex(event.duration) && <ResizeField eventId={event.id} />}
       <Field label={`Participants (${people.length})`}>
@@ -75,9 +78,9 @@ export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () 
       </Field>
       <div className="sheet-actions">
         <button className="danger" onClick={remove}>Retirer</button>
-        <button onClick={() => { flush(); openSheet({ kind: 'move', eventId: event.id }); }}>Déplacer…</button>
+        <button onClick={() => { autosave.flush(); openSheet({ kind: 'move', eventId: event.id }); }}>Déplacer…</button>
         <button onClick={placeAgain}>Placer à nouveau</button>
-        <button className="primary" disabled={!priceOk} onClick={save}>Enregistrer</button>
+        <button onClick={onClose}>Fermer</button>
       </div>
       <Field label="Commentaires">
         <CommentsThread eventId={event.id} />

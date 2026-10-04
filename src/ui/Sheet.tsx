@@ -1,7 +1,12 @@
 import { useEffect, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
-export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+/**
+ * Fiche en bas d'écran (modale). Fermer (bouton, Échap, clic sur le fond) appelle `onClose` : les fiches à
+ * enregistrement automatique enregistrent ce qui reste en attente au démontage (voir `useAutosave`).
+ * `status` : indicateur affiché dans l'en-tête (ex. « Enregistré »).
+ */
+export function Sheet({ title, onClose, status, children }: { title: string; onClose: () => void; status?: ReactNode; children: ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -13,6 +18,7 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
         <header className="sheet-header">
           <span className="sheet-grip" aria-hidden="true" />
           <h2>{title}</h2>
+          {status}
           <button className="icon-btn" aria-label="Fermer" onClick={onClose}><X size={20} /></button>
         </header>
         <div className="sheet-body">{children}</div>

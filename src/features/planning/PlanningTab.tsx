@@ -81,7 +81,8 @@ export function PlanningTab() {
         </div>
         <DragOverlay>{active && <DragPreview data={active} />}</DragOverlay>
       </DndContext>
-      {sheet && <PlanningSheets sheet={sheet} onClose={close} />}
+      {/* Une fiche par ouverture : changer de fiche démonte la précédente (et enregistre ce qui est en attente). */}
+      {sheet && <PlanningSheets key={JSON.stringify(sheet)} sheet={sheet} onClose={close} />}
     </PlanningContext.Provider>
   );
 }
