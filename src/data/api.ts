@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { Activity, EventComment, Meal, Stay, Team, TripEvent, TripState, Wish } from '../domain/types';
+import type { EventDetails } from './TripContext';
 
 export class InvalidCodeError extends Error {}
 
@@ -35,6 +36,7 @@ export function makeApi(code: string) {
     deleteTeam: (id: string) => call('delete_team', { p_id: id }),
     setTeamMembers: (teamId: string, ids: string[]) => call('set_team_members', { p_team: teamId, p_people: ids }),
     upsertEvent: (e: TripEvent) => call('upsert_event', { p: e }),
+    updateEventDetails: (id: string, details: EventDetails) => call('update_event_details', { p_id: id, p: details }),
     deleteEvent: (id: string) => call('delete_event', { p_id: id }),
     setEventParticipants: (eventId: string, ids: string[]) => call('set_event_participants', { p_event: eventId, p_people: ids }),
     addComment: (c: EventComment) => call('add_comment', { p: c }),

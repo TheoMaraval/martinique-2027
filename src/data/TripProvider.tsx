@@ -24,6 +24,8 @@ export function TripProvider({ code, children }: { code: string; children: React
   const reloadSeq = useRef(0);
   const pending = useRef(0);
   const stale = useRef(false);
+  /** File des appels distants : un seul à la fois, dans l'ordre des actions. */
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
 
   const pushToast = useCallback((text: string) => {
     const id = newId();
@@ -84,15 +86,19 @@ export function TripProvider({ code, children }: { code: string; children: React
   }, [code, reload]);
 
   const mutate = useCallback(
-    async (local: (s: TripState) => TripState, remote: () => Promise<unknown>) => {
+    async (local: (s: TripState) => TripState, remote: () => Promise<unknown>): Promise<boolean> => {
       pending.current++;
       setState(s => (s ? local(s) : s));
+      const run = queue.current.then(remote);
+      queue.current = run.catch(() => undefined);
       try {
-        await remote();
+        await run;
         void channelRef.current?.send({ type: 'broadcast', event: 'changed', payload: {} });
+        return true;
       } catch (e) {
         pushToast(errorMessage(e));
         stale.current = true;
+        return false;
       } finally {
         pending.current--;
         if (pending.current === 0 && stale.current) {
@@ -163,6 +169,23 @@ export function TripProvider({ code, children }: { code: string; children: React
       async () => {
         await api.upsertEvent(e);
         if (participantIds) await api.setEventParticipants(e.id, participantIds);
+      },
+    ),
+    saveEventDetails: (eventId, details, participantIds) => mutate(
+      s => {
+        const e = s.events.find(x => x.id === eventId);
+        if (!e) return s;
+        return {
+          ...s,
+          events: s.events.map(x => (x.id === eventId ? { ...x, ...details } : x)),
+          event_participants: participantIds
+            ? [...s.event_participants.filter(p => p.event_id !== eventId), ...participantIds.map(person_id => ({ trip_id: e.trip_id, event_id: eventId, person_id }))]
+            : s.event_participants,
+        };
+      },
+      async () => {
+        if (Object.keys(details).length) await api.updateEventDetails(eventId, details);
+        if (participantIds) await api.setEventParticipants(eventId, participantIds);
       },
     ),
     deleteEvent: id => mutate(
