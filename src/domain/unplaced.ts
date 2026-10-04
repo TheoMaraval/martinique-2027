@@ -1,11 +1,13 @@
 import type { Activity, DurationKey, TripState, Wish } from './types';
+import { canonicalDuration } from './durations';
 
 export interface UnplacedItem {
   key: string; activity: Activity; duration: DurationKey; occurrence: number; personIds: string[];
 }
 
+/** Clé de placement ; les anciens codes de durée sont ramenés à 'flex'. */
 export const placementKey = (activityId: string, duration: DurationKey, occurrence: number) =>
-  `${activityId}|${duration}|${occurrence}`;
+  `${activityId}|${canonicalDuration(duration)}|${occurrence}`;
 
 /** Multiplicateur de succès ×N : nombre de personnes distinctes ayant suggéré l'activité (toutes durées). */
 export function popularity(s: TripState): Map<string, number> {
@@ -15,23 +17,29 @@ export function popularity(s: TripState): Map<string, number> {
 }
 
 export function unplacedItems(s: TripState): UnplacedItem[] {
-  const groups = new Map<string, Wish[]>();
+  // Groupes (activité, durée canonique) ; une seule envie par personne (quantité max) dans un groupe.
+  const groups = new Map<string, { duration: DurationKey; byPerson: Map<string, Wish> }>();
   for (const w of s.wishes) {
-    const k = `${w.activity_id}|${w.duration}`;
-    groups.set(k, [...(groups.get(k) ?? []), w]);
+    const duration = canonicalDuration(w.duration);
+    const k = `${w.activity_id}|${duration}`;
+    const g = groups.get(k) ?? { duration, byPerson: new Map<string, Wish>() };
+    const prev = g.byPerson.get(w.person_id);
+    if (!prev || w.quantity > prev.quantity) g.byPerson.set(w.person_id, w);
+    groups.set(k, g);
   }
   const placed = new Set(s.events.map(e => placementKey(e.activity_id, e.duration, e.occurrence)));
   const items: UnplacedItem[] = [];
-  for (const ws of groups.values()) {
+  for (const { duration, byPerson } of groups.values()) {
+    const ws = [...byPerson.values()];
     const activity = s.activities.find(a => a.id === ws[0].activity_id);
     if (!activity) continue;
     const qty = (w: Wish) => (activity.has_quantity ? w.quantity : 1);
     const max = Math.max(...ws.map(qty));
     for (let occ = 1; occ <= max; occ++) {
-      const key = placementKey(activity.id, ws[0].duration, occ);
+      const key = placementKey(activity.id, duration, occ);
       if (placed.has(key)) continue;
       items.push({
-        key, activity, duration: ws[0].duration, occurrence: occ,
+        key, activity, duration, occurrence: occ,
         personIds: ws.filter(w => qty(w) >= occ).map(w => w.person_id),
       });
     }

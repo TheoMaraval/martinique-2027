@@ -4,7 +4,7 @@ import { slotIndex } from './slots';
 
 const boatTeam = makeTeam({ id: 'bt', name: 'Équipe bateau', start_date: '2027-04-17', start_part: 'matin', end_date: '2027-04-20', end_part: 'soir' });
 const s = makeState({ teams: [...makeState().teams, boatTeam], team_members: members('bt', ['p1', 'p2']) });
-const idx = (date: string, part: 'matin' | 'aprem' | 'soir') => slotIndex(s.trip, date, part);
+const idx = (date: string, part: 'matin' | 'midi' | 'aprem' | 'soir') => slotIndex(s.trip, date, part);
 
 describe('teams', () => {
   it("répartit l'effectif entre équipe par défaut et équipe parallèle", () => {
@@ -25,5 +25,13 @@ describe('teams', () => {
   it('liste les équipes du jour, défaut en premier', () => {
     expect(teamsOnDay(s, '2027-04-16').map(t => t.id)).toEqual(['all']);
     expect(teamsOnDay(s, '2027-04-17').map(t => t.id)).toEqual(['all', 'bt']);
+  });
+
+  it('une équipe qui commence le soir apparaît ce jour-là (4 moments par jour)', () => {
+    const late = makeTeam({ id: 'late', start_date: '2027-04-21', start_part: 'soir', end_date: '2027-04-22', end_part: 'midi' });
+    const st = makeState({ teams: [...makeState().teams, late], team_members: members('late', ['p1']) });
+    expect(teamsOnDay(st, '2027-04-21').map(t => t.id)).toEqual(['all', 'late']);
+    expect(rosterAt(st, 'late', idx('2027-04-22', 'midi'))).toEqual(['p1']);
+    expect(rosterAt(st, 'late', idx('2027-04-22', 'aprem'))).toEqual([]);
   });
 });

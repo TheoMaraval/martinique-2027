@@ -1,4 +1,4 @@
-import { addDays, buildSlots, nightDates, slotAt, slotIndex, tripDates } from './slots';
+import { PARTS, PART_LABEL, SLOT_CAPACITY, addDays, buildSlots, nightDates, slotAt, slotIndex, tripDates } from './slots';
 import { TRIP } from '../test/fixtures';
 
 describe('slots', () => {
@@ -13,19 +13,33 @@ describe('slots', () => {
     expect(addDays('2027-04-30', 1)).toBe('2027-05-01');
   });
 
-  it('construit 33 créneaux avec les vols bloqués', () => {
-    const s = buildSlots(TRIP);
-    expect(s).toHaveLength(33);
-    expect(s[0]).toMatchObject({ date: '2027-04-15', part: 'matin', plannable: false, blockedLabel: 'Vol aller' });
-    expect(s[1].plannable).toBe(true);
-    expect(s[30]).toMatchObject({ date: '2027-04-25', part: 'matin', plannable: true });
-    expect(s[31]).toMatchObject({ plannable: false, blockedLabel: 'Départ' });
-    expect(s[32].plannable).toBe(false);
+  it('a 4 moments par jour, Midi compris', () => {
+    expect(PARTS).toEqual(['matin', 'midi', 'aprem', 'soir']);
+    expect(PARTS.map(p => PART_LABEL[p])).toEqual(['Matin', 'Midi', 'Après-midi', 'Soir']);
   });
 
-  it('convertit date/moment <-> index', () => {
-    expect(slotIndex(TRIP, '2027-04-16', 'soir')).toBe(5);
-    expect(slotAt(TRIP, 5)).toEqual({ date: '2027-04-16', part: 'soir' });
+  it('construit 44 créneaux avec les vols bloqués', () => {
+    const s = buildSlots(TRIP);
+    expect(s).toHaveLength(44);
+    expect(s[0]).toMatchObject({ date: '2027-04-15', part: 'matin', plannable: false, blockedLabel: 'Vol aller' });
+    expect(s[1]).toMatchObject({ date: '2027-04-15', part: 'midi', plannable: false, blockedLabel: 'Vol aller' });
+    expect(s[2]).toMatchObject({ date: '2027-04-15', part: 'aprem', plannable: true });
+    expect(s[40]).toMatchObject({ date: '2027-04-25', part: 'matin', plannable: true });
+    expect(s[41]).toMatchObject({ date: '2027-04-25', part: 'midi', plannable: true });
+    expect(s[42]).toMatchObject({ part: 'aprem', plannable: false, blockedLabel: 'Départ' });
+    expect(s[43]).toMatchObject({ part: 'soir', plannable: false, blockedLabel: 'Départ' });
+    expect(s.filter(x => x.plannable)).toHaveLength(40);
+  });
+
+  it('convertit date/moment <-> index (jour*4 + rang)', () => {
+    expect(slotIndex(TRIP, '2027-04-16', 'soir')).toBe(7);
+    expect(slotIndex(TRIP, '2027-04-16', 'midi')).toBe(5);
+    expect(slotAt(TRIP, 7)).toEqual({ date: '2027-04-16', part: 'soir' });
+    expect(slotAt(TRIP, 5)).toEqual({ date: '2027-04-16', part: 'midi' });
+  });
+
+  it('capacité par équipe : 2 le matin et l’après-midi, 1 midi et soir', () => {
+    expect(SLOT_CAPACITY).toEqual({ matin: 2, midi: 1, aprem: 2, soir: 1 });
   });
 
   it('refuse une date hors voyage', () => {

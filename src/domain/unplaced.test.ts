@@ -6,14 +6,14 @@ const wish = (id: string, person_id: string, activity_id: string, duration: stri
   ({ id, trip_id: 'trip', person_id, activity_id, duration, quantity });
 
 const wishes = [
-  wish('w1', 'p1', 'surf', 'half'), wish('w2', 'p2', 'surf', 'half'), wish('w3', 'p3', 'surf', 'half'),
-  wish('w4', 'p1', 'rando', 'half', 2), wish('w5', 'p2', 'rando', 'half', 1),
+  wish('w1', 'p1', 'surf', 'flex'), wish('w2', 'p2', 'surf', 'flex'), wish('w3', 'p3', 'surf', 'flex'),
+  wish('w4', 'p1', 'rando', 'flex', 2), wish('w5', 'p2', 'rando', 'flex', 1),
   wish('w6', 'p4', 'boat', 'multi:4:3'),
 ];
 
 describe('popularity', () => {
   it('compte les personnes distinctes par activité (×N)', () => {
-    const extra = [...wishes, wish('w7', 'p1', 'rando', 'day')];
+    const extra = [...wishes, wish('w7', 'p1', 'rando', 'multi:2:1')];
     const pop = popularity(makeState({ wishes: extra }));
     expect(pop.get('surf')).toBe(3);
     expect(pop.get('rando')).toBe(2);
@@ -24,6 +24,7 @@ describe('popularity', () => {
 describe('unplacedItems', () => {
   it('groupe, éclate les quantités et trie par suggestions puis par succès ×N', () => {
     const items = unplacedItems(makeState({ wishes }));
+    expect(items.every(i => i.activity.id === 'boat' || i.duration === 'flex')).toBe(true);
     expect(items.map(i => [i.activity.id, i.occurrence, i.personIds])).toEqual([
       ['surf', 1, ['p1', 'p2', 'p3']],
       ['rando', 1, ['p1', 'p2']],
@@ -33,13 +34,26 @@ describe('unplacedItems', () => {
   });
 
   it('retire les éléments déjà placés', () => {
-    const events = [makeEvent({ id: 'e1', activity_id: 'rando', duration: 'half', occurrence: 1, start_date: '2027-04-16', start_part: 'matin' })];
+    const events = [makeEvent({ id: 'e1', activity_id: 'rando', duration: 'flex', occurrence: 1, start_date: '2027-04-16', start_part: 'matin' })];
     const items = unplacedItems(makeState({ wishes, events }));
     expect(items.map(i => `${i.activity.id}#${i.occurrence}`)).toEqual(['surf#1', 'rando#2', 'boat#1']);
   });
 
   it('ignore la quantité si l’activité n’en a pas', () => {
-    const items = unplacedItems(makeState({ wishes: [wish('w', 'p1', 'surf', 'day', 3)] }));
+    const items = unplacedItems(makeState({ wishes: [wish('w', 'p1', 'surf', 'flex', 3)] }));
     expect(items).toHaveLength(1);
+  });
+
+  it('lit les anciennes clés comme « flex » : envies fusionnées par personne, quantité max', () => {
+    const legacy = [
+      wish('a', 'p1', 'rando', 'half', 1), wish('b', 'p1', 'rando', 'day', 2), wish('c', 'p2', 'rando', 'evening'),
+    ];
+    const items = unplacedItems(makeState({ wishes: legacy }));
+    expect(items.map(i => [i.key, i.duration, i.personIds])).toEqual([
+      ['rando|flex|1', 'flex', ['p1', 'p2']],
+      ['rando|flex|2', 'flex', ['p1']],
+    ]);
+    const placed = [makeEvent({ id: 'e', activity_id: 'rando', duration: 'half', occurrence: 1, start_date: '2027-04-16', start_part: 'matin' })];
+    expect(unplacedItems(makeState({ wishes: legacy, events: placed })).map(i => i.key)).toEqual(['rando|flex|2']);
   });
 });

@@ -1,5 +1,5 @@
-export type Part = 'matin' | 'aprem' | 'soir';
-/** 'half' | 'day' | 'evening' | `multi:${jours}:${nuits}` */
+export type Part = 'matin' | 'midi' | 'aprem' | 'soir';
+/** 'flex' | `multi:${jours}:${nuits}` (anciens codes 'half' | 'day' | 'evening' lus comme 'flex'). */
 export type DurationKey = string;
 export type PriceMode = 'total' | 'per_person';
 
@@ -21,7 +21,10 @@ export interface Team {
 export interface TeamMember { trip_id: string; team_id: string; person_id: string }
 export interface TripEvent {
   id: string; trip_id: string; team_id: string; activity_id: string; duration: DurationKey; occurrence: number;
-  start_date: string; start_part: Part; place_name: string; lat: number | null; lng: number | null;
+  start_date: string; start_part: Part;
+  /** Fin d'emprise (incluse) d'une activité simple étirée ; null → 1 seul créneau (ou emprise multi-jours). */
+  end_date: string | null; end_part: Part | null;
+  place_name: string; lat: number | null; lng: number | null;
   price: number | null; price_mode: PriceMode; links: Link[]; notes: string;
 }
 export interface EventParticipant { trip_id: string; event_id: string; person_id: string }
@@ -34,8 +37,14 @@ export interface Stay {
   /** Plusieurs options par (équipe, nuit) ; une seule retenue. */
   chosen: boolean;
 }
+export type MealKind = 'dejeuner' | 'diner';
+/** Repas d'une équipe pour un jour : pour info, jamais compté dans les dépenses. */
+export interface Meal {
+  id: string; trip_id: string; team_id: string; date: string; kind: MealKind; place_name: string;
+  lat: number | null; lng: number | null; links: Link[]; price: number | null; price_mode: PriceMode; notes: string;
+}
 export interface TripState {
   trip: Trip; people: Person[]; activities: Activity[]; wishes: Wish[]; teams: Team[];
   team_members: TeamMember[]; events: TripEvent[]; event_participants: EventParticipant[];
-  event_comments: EventComment[]; stays: Stay[];
+  event_comments: EventComment[]; stays: Stay[]; meals: Meal[];
 }

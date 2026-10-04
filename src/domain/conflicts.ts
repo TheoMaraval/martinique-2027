@@ -1,10 +1,11 @@
 import type { Stay, TripEvent, TripState } from './types';
 import { spanOf, type Span } from './durations';
-import { nightDates, slotIndex } from './slots';
+import { SLOT_CAPACITY, buildSlots, nightDates, slotIndex } from './slots';
 import { effectiveTeamIds, membersOf, teamRange } from './teams';
 
 export type Alert =
-  | { kind: 'overlap'; personId: string; eventIds: [string, string] }
+  /** Plus d'activités que la capacité du créneau pour cette personne (≥ 2 activités). */
+  | { kind: 'overlap'; personId: string; eventIds: string[] }
   | { kind: 'two-teams'; personId: string; teamIds: [string, string] }
   | { kind: 'no-stay'; personId: string; night: string };
 
@@ -13,7 +14,8 @@ export function participantsOf(s: TripState, eventId: string): string[] {
 }
 
 export function eventSpan(s: TripState, e: TripEvent): Span {
-  return spanOf(s.trip, e.duration, { date: e.start_date, part: e.start_part });
+  const end = e.end_date && e.end_part ? { date: e.end_date, part: e.end_part } : null;
+  return spanOf(s.trip, e.duration, { date: e.start_date, part: e.start_part }, end);
 }
 
 /** Nuits couvertes par une activité multi-jours à laquelle la personne participe. */
@@ -38,16 +40,20 @@ export function stayFor(s: TripState, personId: string, night: string): Stay | u
 export function computeAlerts(s: TripState): Alert[] {
   const alerts: Alert[] = [];
   const nights = nightDates(s.trip);
+  const slots = buildSlots(s.trip);
   for (const person of s.people) {
-    const evs = s.events
-      .filter(e => participantsOf(s, e.id).includes(person.id))
-      .map(e => ({ e, slots: new Set(eventSpan(s, e).slots) }));
-    for (let i = 0; i < evs.length; i++) {
-      for (let j = i + 1; j < evs.length; j++) {
-        if ([...evs[i].slots].some(x => evs[j].slots.has(x))) {
-          alerts.push({ kind: 'overlap', personId: person.id, eventIds: [evs[i].e.id, evs[j].e.id] });
-        }
-      }
+    const bySlot = new Map<number, string[]>();
+    for (const e of s.events) {
+      if (!participantsOf(s, e.id).includes(person.id)) continue;
+      for (const i of eventSpan(s, e).slots) bySlot.set(i, [...(bySlot.get(i) ?? []), e.id]);
+    }
+    const seen = new Set<string>();
+    for (const [i, ids] of [...bySlot].sort((a, b) => a[0] - b[0])) {
+      if (ids.length <= SLOT_CAPACITY[slots[i].part]) continue;
+      const key = ids.join('|');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      alerts.push({ kind: 'overlap', personId: person.id, eventIds: ids });
     }
     const teams = s.teams.filter(t => !t.is_default && membersOf(s, t.id).includes(person.id));
     for (let i = 0; i < teams.length; i++) {

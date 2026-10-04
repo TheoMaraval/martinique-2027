@@ -1,4 +1,4 @@
-import type { Activity, Stay, Team, TripEvent, TripState } from '../domain/types';
+import type { Activity, Meal, Stay, Team, TripEvent, TripState } from '../domain/types';
 
 export const TRIP = { id: 'trip', name: 'Martinique 2027', start_date: '2027-04-15', end_date: '2027-04-25' };
 
@@ -17,8 +17,15 @@ export function makeEvent(
   p: Partial<TripEvent> & Pick<TripEvent, 'id' | 'activity_id' | 'duration' | 'start_date' | 'start_part'>,
 ): TripEvent {
   return {
-    trip_id: 'trip', team_id: 'all', occurrence: 1, place_name: '', lat: null, lng: null,
+    trip_id: 'trip', team_id: 'all', occurrence: 1, end_date: null, end_part: null, place_name: '', lat: null, lng: null,
     price: null, price_mode: 'total', links: [], notes: '', ...p,
+  };
+}
+
+export function makeMeal(p: Partial<Meal> & Pick<Meal, 'id' | 'date' | 'kind'>): Meal {
+  return {
+    trip_id: 'trip', team_id: 'all', place_name: '', lat: null, lng: null, links: [],
+    price: null, price_mode: 'total', notes: '', ...p,
   };
 }
 
@@ -50,7 +57,7 @@ export function makeState(over: Partial<TripState> = {}): TripState {
     ],
     wishes: [],
     teams: [makeTeam({ id: 'all', name: 'Tout le groupe', color: '#0e9aa7', is_default: true })],
-    team_members: [], events: [], event_participants: [], event_comments: [], stays: [],
+    team_members: [], events: [], event_participants: [], event_comments: [], stays: [], meals: [],
     ...over,
   };
 }

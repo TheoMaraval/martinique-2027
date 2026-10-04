@@ -1,5 +1,5 @@
 import { expensesByPerson, shareOf } from './expenses';
-import { makeEvent, makeState, makeStay, participants } from '../test/fixtures';
+import { makeEvent, makeMeal, makeState, makeStay, participants } from '../test/fixtures';
 
 describe('shareOf', () => {
   it('répartit un total ou garde un prix par personne', () => {
@@ -17,7 +17,7 @@ describe('expensesByPerson', () => {
       people: base.people.map(p => (p.id === 'p4' ? { ...p, budget_max: null } : p)),
       events: [
         makeEvent({ id: 'b', activity_id: 'boat', duration: 'multi:4:3', start_date: '2027-04-17', start_part: 'matin', price: 2400, price_mode: 'total' }),
-        makeEvent({ id: 's', activity_id: 'surf', duration: 'half', start_date: '2027-04-16', start_part: 'matin', price: 45, price_mode: 'per_person' }),
+        makeEvent({ id: 's', activity_id: 'surf', duration: 'flex', start_date: '2027-04-16', start_part: 'matin', price: 45, price_mode: 'per_person' }),
       ],
       event_participants: [...participants('b', ['p1', 'p2', 'p3', 'p4']), ...participants('s', ['p1'])],
       stays: [
@@ -30,5 +30,21 @@ describe('expensesByPerson', () => {
       personId: 'p1', lodging: 250, boat: 600, activities: 45, total: 895, budget: 1000, delta: 105,
     });
     expect(rows.find(r => r.personId === 'p4')).toMatchObject({ total: 850, budget: null, delta: null });
+  });
+});
+
+describe('expensesByPerson et repas', () => {
+  it('ne compte jamais les repas, mais compte une activité placée au Midi', () => {
+    const s = makeState({
+      events: [makeEvent({ id: 'c', activity_id: 'surf', duration: 'flex', start_date: '2027-04-16', start_part: 'midi', price: 80, price_mode: 'total' })],
+      event_participants: participants('c', ['p1', 'p2']),
+      meals: [
+        makeMeal({ id: 'm1', date: '2027-04-16', kind: 'dejeuner', price: 200, price_mode: 'total' }),
+        makeMeal({ id: 'm2', date: '2027-04-16', kind: 'diner', price: 50, price_mode: 'per_person' }),
+      ],
+    });
+    const rows = expensesByPerson(s);
+    expect(rows.find(r => r.personId === 'p1')).toMatchObject({ activities: 40, lodging: 0, boat: 0, total: 40 });
+    expect(rows.find(r => r.personId === 'p3')).toMatchObject({ total: 0 });
   });
 });

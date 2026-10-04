@@ -1,5 +1,5 @@
 import type { Team, TripState } from './types';
-import { slotIndex } from './slots';
+import { lastSlotOfDay, slotIndex } from './slots';
 
 export function teamRange(s: TripState, t: Team): [number, number] {
   return [slotIndex(s.trip, t.start_date, t.start_part), slotIndex(s.trip, t.end_date, t.end_part)];
@@ -37,7 +37,7 @@ export function rosterAt(s: TripState, teamId: string, idx: number): string[] {
 
 export function teamsOnDay(s: TripState, date: string): Team[] {
   const first = slotIndex(s.trip, date, 'matin');
-  const last = first + 2;
+  const last = lastSlotOfDay(first);
   const others = s.teams
     .filter(t => !t.is_default)
     .filter(t => {
