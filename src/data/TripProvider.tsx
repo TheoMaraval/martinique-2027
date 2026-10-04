@@ -40,7 +40,7 @@ export function TripProvider({ code, children }: { code: string; children: React
         stale.current = true;
         return;
       }
-      setState(data);
+      setState({ ...data, meals: data.meals ?? [] });
       setStatus('ready');
     } catch (e) {
       if (seq !== reloadSeq.current) return;
@@ -149,6 +149,7 @@ export function TripProvider({ code, children }: { code: string; children: React
         event_participants: s.event_participants.filter(p => !ev.has(p.event_id)),
         event_comments: s.event_comments.filter(c => !ev.has(c.event_id)),
         stays: s.stays.filter(st => st.team_id !== id),
+        meals: s.meals.filter(m => m.team_id !== id),
       };
     }, () => api.deleteTeam(id)),
     saveEvent: (e, participantIds) => mutate(
@@ -200,6 +201,11 @@ export function TripProvider({ code, children }: { code: string; children: React
       }
       return { ...s, stays };
     }, () => api.deleteStay(id)),
+    saveMeal: m => mutate(
+      s => ({ ...s, meals: upsertBy(s.meals, m, (a, b) => a.id === b.id || (a.team_id === b.team_id && a.date === b.date && a.kind === b.kind)) }),
+      () => api.upsertMeal(m),
+    ),
+    deleteMeal: id => mutate(s => ({ ...s, meals: s.meals.filter(m => m.id !== id) }), () => api.deleteMeal(id)),
   }), [api, mutate]);
 
   const setMe = useCallback((id: string | null) => {

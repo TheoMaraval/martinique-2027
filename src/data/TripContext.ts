@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { Activity, EventComment, Stay, Team, TripEvent, TripState, Wish } from '../domain/types';
+import type { Activity, EventComment, Meal, Stay, Team, TripEvent, TripState, Wish } from '../domain/types';
 
 export type Status = 'loading' | 'ready' | 'invalid' | 'error';
 export interface Toast { id: string; text: string }
@@ -20,6 +20,9 @@ export interface TripActions {
   saveStay(st: Stay): Promise<void>;
   chooseStay(id: string): Promise<void>;
   deleteStay(id: string): Promise<void>;
+  /** Un seul repas par (équipe, jour, type) : remplace l'existant. */
+  saveMeal(m: Meal): Promise<void>;
+  deleteMeal(id: string): Promise<void>;
 }
 
 export interface TripCtx {

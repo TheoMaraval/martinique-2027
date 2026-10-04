@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Activity, EventComment, Stay, Team, TripEvent, TripState, Wish } from '../domain/types';
+import type { Activity, EventComment, Meal, Stay, Team, TripEvent, TripState, Wish } from '../domain/types';
 
 export class InvalidCodeError extends Error {}
 
@@ -42,6 +42,8 @@ export function makeApi(code: string) {
     upsertStay: (st: Stay) => call('upsert_stay', { p: st }),
     chooseStay: (id: string) => call('choose_stay', { p_id: id }),
     deleteStay: (id: string) => call('delete_stay', { p_id: id }),
+    upsertMeal: (m: Meal) => call('upsert_meal', { p: m }),
+    deleteMeal: (id: string) => call('delete_meal', { p_id: id }),
   };
 }
 

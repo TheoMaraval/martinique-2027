@@ -9,7 +9,7 @@ export function fakeActions(): TripActions {
   return {
     setBudget: fn(), saveWish: fn(), deleteWish: fn(), saveActivity: fn(), deleteActivity: fn(),
     saveTeam: fn(), deleteTeam: fn(), saveEvent: fn(), deleteEvent: fn(), addComment: fn(),
-    deleteComment: fn(), saveStay: fn(), chooseStay: fn(), deleteStay: fn(),
+    deleteComment: fn(), saveStay: fn(), chooseStay: fn(), deleteStay: fn(), saveMeal: fn(), deleteMeal: fn(),
   };
 }
 
