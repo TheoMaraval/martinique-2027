@@ -24,7 +24,7 @@ export function WishesTab() {
       <p className="info-banner">
         <Users size={20} className="info-icon" />
         <span>
-          Coche ce qui te tente et la durée. Selon les envies, <strong>on ne sera pas toujours tous ensemble</strong> :
+          Coche ce qui te tente (et la formule pour le bateau). Selon les envies, <strong>on ne sera pas toujours tous ensemble</strong> :
           le planning prévoit des équipes en parallèle.
         </span>
       </p>

@@ -52,8 +52,8 @@ export function makeState(over: Partial<TripState> = {}): TripState {
     })),
     activities: [
       makeActivity('boat', 'Bateau multi-jours', 'Bateau', ['multi:4:3', 'multi:3:3', 'multi:3:2']),
-      makeActivity('surf', 'Surf', 'Mer', ['half', 'day']),
-      makeActivity('rando', 'Randonnée', 'Nature', ['half', 'day'], true),
+      makeActivity('surf', 'Surf', 'Mer', ['flex']),
+      makeActivity('rando', 'Randonnée', 'Nature', ['flex'], true),
     ],
     wishes: [],
     teams: [makeTeam({ id: 'all', name: 'Tout le groupe', color: '#0e9aa7', is_default: true })],

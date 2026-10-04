@@ -1,11 +1,31 @@
 import { Check, Trash2 } from 'lucide-react';
 import { useReadyTrip } from '../../data/TripContext';
-import type { Activity } from '../../domain/types';
-import { durationLabel } from '../../domain/durations';
+import type { Activity, DurationKey, Wish } from '../../domain/types';
+import { FLEX, canonicalDuration, durationLabel, isFlex } from '../../domain/durations';
 import { firstName } from '../../lib/format';
 import { newId } from '../../lib/ids';
 import { LinkList } from '../../ui/Links';
 import { Avatar } from '../../ui/Avatar';
+
+interface Choice { key: DurationKey; label: string; matches: (w: Wish) => boolean }
+
+/** Activité simple : une seule pilule « Ça me tente » ; séjour multi-jours : une pilule par formule. */
+function choicesOf(activity: Activity): Choice[] {
+  const keys = [...new Set(activity.durations.map(canonicalDuration))];
+  return keys.map(key => (key === FLEX
+    ? { key, label: 'Ça me tente', matches: (w: Wish) => isFlex(w.duration) }
+    : { key, label: durationLabel(key), matches: (w: Wish) => w.duration === key }));
+}
+
+/** Une envie par personne (la plus grande quantité). */
+function onePerPerson(ws: Wish[]): Wish[] {
+  const by = new Map<string, Wish>();
+  for (const w of ws) {
+    const prev = by.get(w.person_id);
+    if (!prev || w.quantity > prev.quantity) by.set(w.person_id, w);
+  }
+  return [...by.values()];
+}
 
 export function ActivityCard({ activity }: { activity: Activity }) {
   const { state, me, actions } = useReadyTrip();
@@ -29,9 +49,10 @@ export function ActivityCard({ activity }: { activity: Activity }) {
       {activity.description && <p className="muted">{activity.description}</p>}
       <LinkList links={activity.links} />
       <ul className="durations">
-        {activity.durations.map(d => {
-          const mine = state.wishes.find(w => w.person_id === me && w.activity_id === activity.id && w.duration === d);
-          const all = state.wishes.filter(w => w.activity_id === activity.id && w.duration === d);
+        {choicesOf(activity).map(({ key: d, label, matches }) => {
+          const mineAll = state.wishes.filter(w => w.person_id === me && w.activity_id === activity.id && matches(w));
+          const mine = onePerPerson(mineAll)[0];
+          const all = onePerPerson(state.wishes.filter(w => w.activity_id === activity.id && matches(w)));
           return (
             <li key={d}>
               <div className="duration-row">
@@ -41,13 +62,13 @@ export function ActivityCard({ activity }: { activity: Activity }) {
                     onChange={e => {
                       if (e.target.checked) {
                         void actions.saveWish({ id: newId(), trip_id: state.trip.id, person_id: me, activity_id: activity.id, duration: d, quantity: 1 });
-                      } else if (mine) {
-                        void actions.deleteWish(mine.id);
+                      } else {
+                        for (const w of mineAll) void actions.deleteWish(w.id);
                       }
                     }}
                   />
                   {mine && <Check size={16} strokeWidth={2.5} />}
-                  {durationLabel(d)}
+                  {label}
                 </label>
                 {activity.has_quantity && mine && (
                   <label className="qty">
