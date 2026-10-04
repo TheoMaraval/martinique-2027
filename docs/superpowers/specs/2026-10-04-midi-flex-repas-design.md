@@ -72,3 +72,9 @@ Remplace les points 3 (capacité) et « Alerte de chevauchement » ci-dessus.
 - Logements : une nouvelle option n'est créée qu'avec un nom de lieu, un lien ou un prix, puis elle est mise à jour ; « Terminé » ferme l'éditeur. « + Proposer un logement » et le choix par bouton radio sont inchangés.
 - Repas : créé dès qu'un champ est rempli ; « Supprimer » inchangé.
 - Restent explicites : fiche équipe (création, changements de dates avec confirmation) et formulaire d'ajout d'activité. Le budget du profil s'enregistre aussi pendant la saisie (600 ms, montants valides) et à la sortie du champ.
+- **Robustesse (revue)** :
+  - Les actions renvoient `Promise<boolean>` (false si l'appel distant échoue : message + rechargement). Les appels distants partent **un par un, dans l'ordre** (file FIFO dans `TripProvider`) ; les mises à jour locales restent immédiates. `useAutosave` n'enchaîne pas deux envois : ce qui arrive pendant un envoi part à la fin.
+  - Échec d'un enregistrement automatique : « Non enregistré — nouvel essai… », nouvel essai toutes les 3 s (3 fois), puis « Non enregistré » jusqu'à la prochaine modification.
+  - Fiche activité : RPC `update_event_details(p_code, p_id, p)` (migration `0006_event_details.sql`) qui ne modifie que les clés envoyées parmi lieu, GPS, prix, liens, notes, sans toucher à la place dans le planning (`upsert_event` reste pour placer, déplacer, étirer). Action `saveEventDetails(eventId, details, participantIds?)`.
+  - Repas et options de logement : seuls les champs modifiés sont appliqués sur la version actuelle ; supprimé(e) ailleurs → « Supprimé par quelqu'un d'autre » et plus aucun enregistrement.
+  - Un prix invalide ne bloque plus l'enregistrement des autres champs (il n'est simplement pas envoyé ; l'erreur reste affichée).

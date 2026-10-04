@@ -2,7 +2,7 @@ import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MealSheet } from './MealSheet';
 import { makeMeal, makeState } from '../../test/fixtures';
-import { renderWithTrip } from '../../test/renderWithTrip';
+import { fakeActions, renderWithTrip } from '../../test/renderWithTrip';
 
 vi.mock('../../ui/MapPicker', () => ({ MapPicker: () => null }));
 
@@ -63,5 +63,45 @@ describe('MealSheet', () => {
     expect(actions.deleteMeal).toHaveBeenCalledWith('m1');
     unmount();
     expect(actions.saveMeal).not.toHaveBeenCalled();
+  });
+});
+
+describe('MealSheet — robustesse de l’enregistrement automatique', () => {
+  const lulu = makeMeal({ id: 'm1', date: '2027-04-16', kind: 'diner', place_name: 'Chez Lulu' });
+  const sheet = <MealSheet teamId="all" date="2027-04-16" kind="diner" onClose={vi.fn()} />;
+
+  it('n’applique que les champs modifiés sur la version actuelle du repas', async () => {
+    const { actions, setState } = renderWithTrip(sheet, { state: makeState({ meals: [lulu] }) });
+    await userEvent.type(screen.getByLabelText('Notes'), 'Réserver');
+    // Quelqu'un d'autre change le lieu avant notre enregistrement.
+    setState(makeState({ meals: [{ ...lulu, place_name: 'Chez Paul' }] }));
+    await waitFor(() => expect(actions.saveMeal).toHaveBeenCalled());
+    expect(actions.saveMeal).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'm1', place_name: 'Chez Paul', notes: 'Réserver' }));
+  });
+
+  it("supprimé ailleurs : le dit et n'enregistre plus rien (pas de résurrection)", async () => {
+    const { actions, setState, unmount } = renderWithTrip(sheet, { state: makeState({ meals: [lulu] }) });
+    await userEvent.type(screen.getByLabelText('Notes'), 'x');
+    setState(makeState({ meals: [] }));
+    expect(screen.getByRole('status')).toHaveTextContent("Supprimé par quelqu'un d'autre");
+    await userEvent.type(screen.getByLabelText('Notes'), 'y');
+    unmount();
+    expect(actions.saveMeal).not.toHaveBeenCalled();
+  });
+
+  it('un prix invalide ne bloque pas les autres champs, l’erreur reste affichée', async () => {
+    const { actions } = renderWithTrip(sheet, { state: makeState({ meals: [lulu] }) });
+    await userEvent.type(screen.getByLabelText('Montant (€)'), 'abc');
+    await userEvent.type(screen.getByLabelText('Notes'), 'Terrasse');
+    await waitFor(() => expect(actions.saveMeal).toHaveBeenCalledWith(expect.objectContaining({ notes: 'Terrasse', price: null })));
+    expect(screen.getByRole('alert')).toHaveTextContent('Montant invalide');
+  });
+
+  it('échec : « Non enregistré — nouvel essai… »', async () => {
+    const actions = fakeActions();
+    vi.mocked(actions.saveMeal).mockResolvedValue(false);
+    renderWithTrip(sheet, { state: makeState({ meals: [lulu] }), actions });
+    await userEvent.type(screen.getByLabelText('Notes'), 'x');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Non enregistré — nouvel essai…'));
   });
 });

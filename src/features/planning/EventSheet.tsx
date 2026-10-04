@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useReadyTrip } from '../../data/TripContext';
+import { useReadyTrip, type EventDetails } from '../../data/TripContext';
 import { isFlex } from '../../domain/durations';
 import { eventSpan, participantsOf } from '../../domain/conflicts';
 import { nextOccurrence, resizeOptions, resizedEvent } from '../../domain/placement';
@@ -27,17 +27,17 @@ export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () 
   const [draft, setDraft] = useState(event);
   const [peopleTouched, setPeopleTouched] = useState(false);
   const [people, setPeople] = useState(() => participantsOf(state, eventId));
-  const [priceOk, setPriceOk] = useState(true);
   const value = draft ? { fields: Object.fromEntries(FIELDS.map(k => [k, draft[k]])), people, peopleTouched } : null;
-  // On n'applique que les champs modifiés depuis le dernier enregistrement, par-dessus la dernière
-  // version de l'activité (synchro temps réel) ; les participants seulement s'ils ont été modifiés.
+  // On n'envoie que les détails modifiés depuis le dernier enregistrement (jamais la place dans le
+  // planning, qui peut changer ailleurs) ; les participants seulement s'ils ont été modifiés.
+  // Le prix n'arrive ici que s'il est valide (PriceField garde l'erreur affichée).
   const autosave = useAutosave(value, (next, prev) => {
-    if (!event || !next || !prev) return;
-    const patch = Object.fromEntries(FIELDS.filter(k => JSON.stringify(next.fields[k]) !== JSON.stringify(prev.fields[k])).map(k => [k, next.fields[k]]));
+    if (!next || !prev) return;
+    const patch: EventDetails = Object.fromEntries(FIELDS.filter(k => JSON.stringify(next.fields[k]) !== JSON.stringify(prev.fields[k])).map(k => [k, next.fields[k]]));
     const participants = next.peopleTouched && JSON.stringify(next.people) !== JSON.stringify(prev.people) ? next.people : undefined;
     if (!Object.keys(patch).length && !participants) return;
-    return actions.saveEvent({ ...event, ...patch }, participants);
-  }, { enabled: priceOk && !!event });
+    return actions.saveEventDetails(eventId, patch, participants);
+  }, { enabled: !!event });
   if (!event || !draft) return null;
   const activity = state.activities.find(a => a.id === event.activity_id);
   const team = state.teams.find(t => t.id === event.team_id);
@@ -67,7 +67,7 @@ export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () 
         <PlaceField value={{ place_name: draft.place_name, lat: draft.lat, lng: draft.lng }} onChange={v => setDraft(d => d && { ...d, ...v })} />
       </Field>
       <Field label="Budget (optionnel)">
-        <PriceField price={draft.price} mode={draft.price_mode} participants={people.length} onValidity={setPriceOk}
+        <PriceField price={draft.price} mode={draft.price_mode} participants={people.length}
           onChange={(price, price_mode) => setDraft(d => d && { ...d, price, price_mode })} />
       </Field>
       <Field label="Liens">

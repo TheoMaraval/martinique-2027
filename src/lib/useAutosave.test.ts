@@ -117,4 +117,93 @@ describe('useAutosave', () => {
     expect(first).not.toHaveBeenCalled();
     expect(second).toHaveBeenCalledWith(2, 1);
   });
+
+  it('échec (false) : « nouvel essai » après 3 s avec la même valeur précédente, puis « Enregistré »', async () => {
+    const save = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true);
+    const { result, rerender } = setup({ value: { n: 1 } }, save);
+    rerender({ value: { n: 2 } });
+    await act(async () => { vi.advanceTimersByTime(600); });
+    expect(result.current.status).toBe('retrying');
+    await act(async () => { vi.advanceTimersByTime(2999); });
+    expect(save).toHaveBeenCalledTimes(1);
+    await act(async () => { vi.advanceTimersByTime(1); });
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save).toHaveBeenLastCalledWith({ n: 2 }, { n: 1 });
+    expect(result.current.status).toBe('saved');
+  });
+
+  it('abandonne après 3 nouveaux essais (exception comprise) : « Non enregistré »', async () => {
+    const save = vi.fn().mockRejectedValueOnce(new Error('réseau')).mockResolvedValue(false);
+    const { result, rerender } = setup({ value: { n: 1 } }, save);
+    rerender({ value: { n: 2 } });
+    await act(async () => { vi.advanceTimersByTime(600); });
+    for (let i = 0; i < 3; i++) await act(async () => { vi.advanceTimersByTime(3000); });
+    expect(save).toHaveBeenCalledTimes(4);
+    expect(result.current.status).toBe('error');
+    await act(async () => { vi.advanceTimersByTime(10000); });
+    expect(save).toHaveBeenCalledTimes(4);
+    // Une nouvelle modification relance l'enregistrement (avec tout ce qui n'a pas été enregistré).
+    rerender({ value: { n: 3 } });
+    await act(async () => { vi.advanceTimersByTime(600); });
+    expect(save).toHaveBeenLastCalledWith({ n: 3 }, { n: 1 });
+  });
+
+  it("n'enchaîne pas deux enregistrements en parallèle : le suivant attend la fin du précédent", async () => {
+    const resolves: ((ok: boolean) => void)[] = [];
+    const save = vi.fn(() => new Promise<boolean>(r => { resolves.push(r); }));
+    const { result, rerender } = setup({ value: { n: 1 } }, save);
+    rerender({ value: { n: 2 } });
+    act(() => { vi.advanceTimersByTime(600); });
+    rerender({ value: { n: 3 } });
+    act(() => { vi.advanceTimersByTime(600); });
+    act(() => result.current.flush());
+    expect(save).toHaveBeenCalledTimes(1);
+    await act(async () => { resolves[0](true); });
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save).toHaveBeenLastCalledWith({ n: 3 }, { n: 2 });
+    expect(result.current.status).toBe('saving');
+    await act(async () => { resolves[1](true); });
+    expect(result.current.status).toBe('saved');
+  });
+
+  it('un échec suivi de modifications en attente renvoie le tout dès la fin du précédent', async () => {
+    const resolves: ((ok: boolean) => void)[] = [];
+    const save = vi.fn(() => new Promise<boolean>(r => { resolves.push(r); }));
+    const { rerender } = setup({ value: { n: 1 } }, save);
+    rerender({ value: { n: 2 } });
+    act(() => { vi.advanceTimersByTime(600); });
+    rerender({ value: { n: 3 } });
+    act(() => { vi.advanceTimersByTime(600); });
+    await act(async () => { resolves[0](false); });
+    expect(save).toHaveBeenLastCalledWith({ n: 3 }, { n: 1 });
+  });
+
+  it("cancel pendant un enregistrement : pas de nouvel essai si celui-ci échoue", async () => {
+    let resolve!: (ok: boolean) => void;
+    const save = vi.fn(() => new Promise<boolean>(r => { resolve = r; }));
+    const { result, rerender, unmount } = setup({ value: { n: 1 } }, save);
+    rerender({ value: { n: 2 } });
+    act(() => { vi.advanceTimersByTime(600); });
+    act(() => result.current.cancel());
+    await act(async () => { resolve(false); });
+    await act(async () => { vi.advanceTimersByTime(10000); });
+    unmount();
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('fonctionne en StrictMode (effets doublés) : un seul enregistrement, et au démontage', async () => {
+    const save = vi.fn().mockResolvedValue(true);
+    const { rerender, unmount } = renderHook(
+      ({ value }: { value: number }) => useAutosave(value, save),
+      { initialProps: { value: 1 }, reactStrictMode: true },
+    );
+    expect(save).not.toHaveBeenCalled();
+    rerender({ value: 2 });
+    await act(async () => { vi.advanceTimersByTime(600); });
+    expect(save).toHaveBeenCalledTimes(1);
+    rerender({ value: 3 });
+    unmount();
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save).toHaveBeenLastCalledWith(3, 2);
+  });
 });

@@ -1,4 +1,4 @@
-import { useRef, useState, type MutableRefObject } from 'react';
+import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { Plus } from 'lucide-react';
 import { useReadyTrip } from '../../data/TripContext';
 import type { Stay, TripState } from '../../domain/types';
@@ -7,6 +7,7 @@ import { rosterAt } from '../../domain/teams';
 import { formatDay, formatEuros } from '../../lib/format';
 import { newId } from '../../lib/ids';
 import { useAutosave } from '../../lib/useAutosave';
+import { changedFields } from '../../lib/changedFields';
 import { Sheet } from '../../ui/Sheet';
 import { SaveStatus } from '../../ui/SaveStatus';
 import { Field } from '../../ui/Field';
@@ -68,7 +69,7 @@ export function StaySheet({ teamId, night, onClose }: { teamId: string; night: s
         </ul>
       )}
       {editing ? (
-        <OptionEditor key={editing.id} initial={editing} isNew={!options.some(o => o.id === editing.id)} participants={roster.length}
+        <OptionEditor key={editing.id} initial={editing} participants={roster.length}
           cancelRef={cancelEdit} onDone={() => setEditing(null)} />
       ) : (
         <button className="wide" onClick={() => setEditing(emptyOption(state, teamId, night))}><Plus size={18} /> Proposer un logement</button>
@@ -83,33 +84,39 @@ export function StaySheet({ teamId, night, onClose }: { teamId: string; night: s
 
 /**
  * Éditeur d'une option, enregistré automatiquement : une nouvelle option est créée au premier
- * enregistrement utile (lieu, lien ou prix), puis mise à jour. Changer d'option ou fermer enregistre.
+ * enregistrement utile (lieu, lien ou prix), puis seuls les champs modifiés sont appliqués sur la version
+ * actuelle (synchro temps réel). Changer d'option ou fermer enregistre. Supprimée ailleurs : plus rien n'est enregistré.
  */
-function OptionEditor({ initial, isNew, participants, cancelRef, onDone }: {
-  initial: Stay; isNew: boolean; participants: number;
+function OptionEditor({ initial, participants, cancelRef, onDone }: {
+  initial: Stay; participants: number;
   cancelRef: MutableRefObject<(() => void) | null>; onDone: () => void;
 }) {
-  const { actions } = useReadyTrip();
+  const { state, actions } = useReadyTrip();
+  const row = state.stays.find(st => st.id === initial.id);
   const [draft, setDraft] = useState(initial);
-  const [priceOk, setPriceOk] = useState(true);
   const [created, setCreated] = useState(false);
-  const autosave = useAutosave(draft, next => {
+  // L'option a existé dans l'état partagé (à l'ouverture ou après notre création) puis a disparu : supprimée ailleurs.
+  const [seen, setSeen] = useState(!!row);
+  useEffect(() => { if (row && !seen) setSeen(true); }, [row, seen]);
+  const deleted = seen && !row;
+  const isNew = !row && !seen;
+  const autosave = useAutosave(draft, (next, prev) => {
     setCreated(true);
-    return actions.saveStay(next);
-  }, { enabled: priceOk && (!isNew || created || worthCreating(draft)) });
-  cancelRef.current = autosave.cancel;
+    return actions.saveStay({ ...(row ?? next), ...changedFields(next, prev) });
+  }, { enabled: !deleted && (!!row || created || worthCreating(draft)) });
+  useEffect(() => { cancelRef.current = autosave.cancel; });
   return (
     <div className="card">
       <div className="editor-head">
         <h3>{isNew && !created ? 'Nouvelle option' : "Modifier l'option"}</h3>
-        <SaveStatus status={autosave.status} />
+        <SaveStatus status={autosave.status} deleted={deleted} />
       </div>
       <Field label="Ville / logement">
         <PlaceField value={{ place_name: draft.place_name, lat: draft.lat, lng: draft.lng }}
           onChange={v => setDraft(d => ({ ...d, ...v }))} />
       </Field>
       <Field label="Prix">
-        <PriceField price={draft.price} mode={draft.price_mode} participants={participants} onValidity={setPriceOk}
+        <PriceField price={draft.price} mode={draft.price_mode} participants={participants}
           onChange={(price, price_mode) => setDraft(d => ({ ...d, price, price_mode }))} />
       </Field>
       <Field label="Liens vers le logement">

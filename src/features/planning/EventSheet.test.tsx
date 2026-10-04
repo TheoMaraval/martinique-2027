@@ -65,25 +65,25 @@ describe('EventSheet — enregistrement automatique', () => {
     expect(screen.queryByRole('button', { name: 'Enregistrer' })).toBeNull();
     await userEvent.type(screen.getByLabelText('Notes'), 'Spot du Diamant');
     expect(screen.getByRole('status')).toHaveTextContent('Enregistrement…');
-    await waitFor(() => expect(actions.saveEvent).toHaveBeenCalledWith(expect.objectContaining({ id: 'e1', notes: 'Spot du Diamant' }), undefined));
-    expect(actions.saveEvent).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(actions.saveEventDetails).toHaveBeenCalledWith('e1', { notes: 'Spot du Diamant' }, undefined));
+    expect(actions.saveEventDetails).toHaveBeenCalledTimes(1);
+    expect(actions.saveEvent).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Enregistré'));
   });
 
-  it("n'applique que les champs modifiés depuis le dernier enregistrement, sur la dernière version de l'activité", async () => {
+  it("n'envoie que les détails modifiés depuis le dernier enregistrement, jamais la place dans le planning", async () => {
     const actions = fakeActions();
     const state = makeState({ events: [surf] });
     const { rerender } = render(ui(state, actions));
     await userEvent.type(screen.getByLabelText('Notes'), 'A');
-    await waitFor(() => expect(actions.saveEvent).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(actions.saveEventDetails).toHaveBeenCalledTimes(1));
     // Quelqu'un d'autre a changé le lieu et l'horaire entre-temps (synchro temps réel).
     const remote = { ...surf, notes: 'A', place_name: 'Plage des Salines', end_date: '2027-04-16', end_part: 'aprem' as const };
     rerender(ui(makeState({ events: [remote] }), actions));
     await userEvent.type(screen.getByLabelText('Notes'), 'B');
-    await waitFor(() => expect(actions.saveEvent).toHaveBeenCalledTimes(2));
-    expect(actions.saveEvent).toHaveBeenLastCalledWith(
-      expect.objectContaining({ notes: 'AB', place_name: 'Plage des Salines', end_part: 'aprem' }), undefined,
-    );
+    await waitFor(() => expect(actions.saveEventDetails).toHaveBeenCalledTimes(2));
+    expect(actions.saveEventDetails).toHaveBeenLastCalledWith('e1', { notes: 'AB' }, undefined);
+    expect(actions.saveEvent).not.toHaveBeenCalled();
   });
 
   it('enregistre les participants seulement quand on les modifie, et immédiatement à la fermeture', async () => {
@@ -91,9 +91,9 @@ describe('EventSheet — enregistrement automatique', () => {
     const state = makeState({ events: [surf], event_participants: participants('e1', ['p1']) });
     const { unmount } = render(ui(state, actions));
     await userEvent.click(screen.getByRole('button', { name: /Jules/ }));
-    expect(actions.saveEvent).not.toHaveBeenCalled();
+    expect(actions.saveEventDetails).not.toHaveBeenCalled();
     unmount();
-    expect(actions.saveEvent).toHaveBeenCalledWith(expect.objectContaining({ id: 'e1' }), ['p1', 'p2']);
+    expect(actions.saveEventDetails).toHaveBeenCalledWith('e1', {}, ['p1', 'p2']);
   });
 
   it('enregistre avant « Déplacer… »', async () => {
@@ -102,7 +102,7 @@ describe('EventSheet — enregistrement automatique', () => {
     render(ui(makeState({ events: [surf] }), actions, { openSheet }));
     await userEvent.type(screen.getByLabelText('Notes'), 'x');
     await userEvent.click(screen.getByRole('button', { name: 'Déplacer…' }));
-    expect(actions.saveEvent).toHaveBeenCalledWith(expect.objectContaining({ notes: 'x' }), undefined);
+    expect(actions.saveEventDetails).toHaveBeenCalledWith('e1', { notes: 'x' }, undefined);
     expect(openSheet).toHaveBeenCalledWith({ kind: 'move', eventId: 'e1' });
   });
 
@@ -112,7 +112,7 @@ describe('EventSheet — enregistrement automatique', () => {
     await userEvent.type(screen.getByLabelText('Montant (€)'), '-3');
     expect(screen.getByRole('alert')).toHaveTextContent('Montant invalide');
     unmount();
-    expect(actions.saveEvent).not.toHaveBeenCalled();
+    expect(actions.saveEventDetails).not.toHaveBeenCalled();
   });
 
   it("« Retirer » n'enregistre pas les modifications en attente", async () => {
@@ -123,6 +123,6 @@ describe('EventSheet — enregistrement automatique', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Retirer' }));
     expect(actions.deleteEvent).toHaveBeenCalledWith('e1');
     unmount();
-    expect(actions.saveEvent).not.toHaveBeenCalled();
+    expect(actions.saveEventDetails).not.toHaveBeenCalled();
   });
 });

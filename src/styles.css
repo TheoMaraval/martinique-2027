@@ -589,6 +589,7 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible { outlin
 .sheet-header h2 { margin: 0; font-size: 1.125rem; flex: 1; min-width: 0; }
 .save-status { display: inline-flex; align-items: center; gap: 4px; font-size: .8125rem; color: var(--muted); white-space: nowrap; }
 .save-status.saved { color: var(--ok); }
+.save-status.failed { color: var(--danger); white-space: normal; text-align: right; }
 .editor-head { display: flex; justify-content: space-between; align-items: center; gap: var(--s-2); }
 .editor-head h3 { margin: 0; }
 .sheet-header .icon-btn { margin-right: -8px; }

@@ -63,3 +63,26 @@ describe('StaySheet', () => {
     expect(actions.saveStay).not.toHaveBeenCalled();
   });
 });
+
+describe('StaySheet — robustesse de l’enregistrement automatique', () => {
+  const sheet = <StaySheet teamId="all" night="2027-04-16" onClose={vi.fn()} />;
+
+  it('n’applique que les champs modifiés sur la version actuelle de l’option', async () => {
+    const { actions, setState } = renderWithTrip(sheet, { state });
+    await userEvent.click(screen.getAllByRole('button', { name: 'Modifier' })[1]);
+    await userEvent.type(screen.getByLabelText('Notes'), 'Vue mer');
+    setState(makeState({ stays: [state.stays[0], { ...state.stays[1], price: 750 }] }));
+    await waitFor(() => expect(actions.saveStay).toHaveBeenCalled());
+    expect(actions.saveStay).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'o2', price: 750, notes: 'Vue mer' }));
+  });
+
+  it("supprimée ailleurs : le dit et n'enregistre plus rien (pas de résurrection)", async () => {
+    const { actions, setState, unmount } = renderWithTrip(sheet, { state });
+    await userEvent.click(screen.getAllByRole('button', { name: 'Modifier' })[1]);
+    await userEvent.type(screen.getByLabelText('Notes'), 'x');
+    setState(makeState({ stays: [state.stays[0]] }));
+    expect(screen.getByRole('status')).toHaveTextContent("Supprimé par quelqu'un d'autre");
+    unmount();
+    expect(actions.saveStay).not.toHaveBeenCalled();
+  });
+});
