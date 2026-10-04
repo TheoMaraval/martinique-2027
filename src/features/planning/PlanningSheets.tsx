@@ -6,6 +6,7 @@ import { QuickAddSheet } from './QuickAddSheet';
 import { PlaceSheet } from './PlaceSheet';
 import { MoveSheet } from './MoveSheet';
 import { SuggestSheet } from './SuggestSheet';
+import { MealSheet } from './MealSheet';
 
 export function PlanningSheets({ sheet, onClose }: { sheet: NonNullable<SheetState>; onClose: () => void }) {
   switch (sheet.kind) {
@@ -16,5 +17,6 @@ export function PlanningSheets({ sheet, onClose }: { sheet: NonNullable<SheetSta
     case 'place': return <PlaceSheet item={sheet.item} onClose={onClose} />;
     case 'move': return <MoveSheet eventId={sheet.eventId} onClose={onClose} />;
     case 'suggest': return <SuggestSheet onClose={onClose} />;
+    case 'meal': return <MealSheet teamId={sheet.teamId} date={sheet.date} kind={sheet.meal} onClose={onClose} />;
   }
 }

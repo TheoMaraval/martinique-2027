@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { Alert } from '../../domain/conflicts';
+import type { MealKind } from '../../domain/types';
 import type { UnplacedItem } from '../../domain/unplaced';
 
 export type SheetState =
@@ -10,6 +11,7 @@ export type SheetState =
   | { kind: 'place'; item: UnplacedItem }
   | { kind: 'move'; eventId: string }
   | { kind: 'suggest' }
+  | { kind: 'meal'; teamId: string; date: string; meal: MealKind }
   | null;
 
 export interface PlanningCtx {

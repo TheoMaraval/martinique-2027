@@ -481,6 +481,38 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible { outlin
 .night.included { background: var(--lagoon-100); min-height: 44px; }
 .night.disabled { min-height: 8px; padding: 0; background: var(--sand-50); }
 
+/* Créneau Midi : plus discret (pique-nique, cours de cuisine). */
+.slot-midi { min-height: 52px; background: var(--sand-50); }
+.slot-midi.disabled { min-height: 44px; }
+.tile-rank { color: var(--sunset-600); font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* Repas (pour info, hors budget) : ligne fine sous Midi (déjeuner) et Soir (dîner). */
+.meal {
+  display: flex; align-items: center; gap: 4px; min-height: 44px;
+  padding: 0 4px 0 10px; border-top: 1px dashed var(--sand-200);
+  font-size: .8125rem; color: var(--ink);
+}
+.meal svg { color: var(--sunset-600); flex: none; }
+.meal-btn {
+  flex: 1; min-width: 0; min-height: 44px; justify-content: flex-start; gap: 6px; text-align: left;
+  border: 0; background: transparent; padding: 0; color: inherit; font-weight: 500; font-size: .8125rem;
+}
+.meal-btn > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meal-btn:hover { background: transparent; text-decoration: underline; }
+.meal-btn:active { transform: none; }
+.meal.empty .meal-btn { color: var(--muted); font-weight: 600; }
+.meal-link {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 44px; height: 44px; border-radius: 50%; color: var(--lagoon-700);
+}
+.meal-link:hover { background: var(--lagoon-100); }
+.meal-link svg { color: inherit; }
+
+/* Fiche activité : horaire étirable */
+.resize-from { margin: 0 0 var(--s-2); font-weight: 600; }
+.resize-to { display: grid; gap: 4px; font-size: .875rem; font-weight: 600; color: var(--muted); }
+.resize-actions { margin-top: var(--s-2); flex-wrap: wrap; }
+
 /* Panneau « À placer » : feuille basse sur mobile */
 .unplaced {
   position: fixed; left: 0; right: 0; bottom: calc(var(--nav-h) + var(--safe-b)); z-index: var(--z-unplaced);
@@ -523,6 +555,9 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible { outlin
 .unplaced-item.hot { border: 1.5px solid var(--sunset-500); background: #FFFAF8; }
 .unplaced-item.hot .badge { background: var(--sunset-600); color: #fff; }
 .unplaced-item.dragging { opacity: .4; }
+.unplaced-item.simple .grip { grid-row: 1 / span 2; }
+.unplaced-item.simple .badge { grid-row: 1; }
+.unplaced-item.simple .names { grid-row: 2; }
 
 .drag-preview {
   display: inline-flex; align-items: baseline; gap: 8px;

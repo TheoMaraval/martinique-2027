@@ -1,10 +1,11 @@
-import type { CSSProperties } from 'react';
+import { Fragment, type CSSProperties } from 'react';
 import { useReadyTrip } from '../../data/TripContext';
 import { PARTS, nightDates, slotIndex } from '../../domain/slots';
 import { rosterAt, teamsOnDay } from '../../domain/teams';
 import { formatDay } from '../../lib/format';
 import { SlotCell } from './SlotCell';
 import { NightCell } from './NightCell';
+import { MealLine } from './MealLine';
 
 export function DayColumn({ date, columnRef }: { date: string; columnRef: (el: HTMLDivElement | null) => void }) {
   const { state } = useReadyTrip();
@@ -20,7 +21,13 @@ export function DayColumn({ date, columnRef }: { date: string; columnRef: (el: H
               <span className="team-pill">{team.name}</span>
               <span className="team-count">{roster.size} pers.</span>
             </div>
-            {PARTS.map(part => <SlotCell key={part} team={team} idx={slotIndex(state.trip, date, part)} />)}
+            {PARTS.map(part => (
+              <Fragment key={part}>
+                <SlotCell team={team} idx={slotIndex(state.trip, date, part)} />
+                {part === 'midi' && <MealLine team={team} date={date} kind="dejeuner" />}
+                {part === 'soir' && <MealLine team={team} date={date} kind="diner" />}
+              </Fragment>
+            ))}
             {isNight && <NightCell team={team} night={date} />}
           </div>
         );
