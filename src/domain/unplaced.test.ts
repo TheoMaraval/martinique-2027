@@ -39,9 +39,14 @@ describe('unplacedItems', () => {
     expect(items.map(i => `${i.activity.id}#${i.occurrence}`)).toEqual(['surf#1', 'rando#2', 'boat#1']);
   });
 
-  it('ignore la quantité si l’activité n’en a pas', () => {
-    const items = unplacedItems(makeState({ wishes: [wish('w', 'p1', 'surf', 'flex', 3)] }));
-    expect(items).toHaveLength(1);
+  it('éclate la quantité pour toute activité simple, même sans has_quantity', () => {
+    const items = unplacedItems(makeState({ wishes: [wish('w', 'p1', 'surf', 'flex', 3), wish('x', 'p2', 'surf', 'flex', 2)] }));
+    expect(items.map(i => [i.occurrence, i.personIds, i.total])).toEqual([[1, ['p1', 'p2'], 3], [2, ['p1', 'p2'], 3], [3, ['p1'], 3]]);
+  });
+
+  it('ne démultiplie jamais un séjour multi-jours', () => {
+    const items = unplacedItems(makeState({ wishes: [wish('w', 'p4', 'boat', 'multi:4:3', 3)] }));
+    expect(items.map(i => [i.occurrence, i.total])).toEqual([[1, 1]]);
   });
 
   it('lit les anciennes clés comme « flex » : envies fusionnées par personne, quantité max', () => {

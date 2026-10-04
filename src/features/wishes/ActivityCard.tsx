@@ -1,7 +1,7 @@
 import { Check, Trash2 } from 'lucide-react';
 import { useReadyTrip } from '../../data/TripContext';
 import type { Activity, DurationKey, Wish } from '../../domain/types';
-import { FLEX, canonicalDuration, durationLabel, isFlex } from '../../domain/durations';
+import { FLEX, allowsQuantity, canonicalDuration, durationLabel, isFlex } from '../../domain/durations';
 import { firstName } from '../../lib/format';
 import { newId } from '../../lib/ids';
 import { LinkList } from '../../ui/Links';
@@ -70,10 +70,10 @@ export function ActivityCard({ activity }: { activity: Activity }) {
                   {mine && <Check size={16} strokeWidth={2.5} />}
                   {label}
                 </label>
-                {activity.has_quantity && mine && (
+                {allowsQuantity(d) && mine && (
                   <label className="qty">
-                    <span>Combien ?</span>
-                    <select aria-label="Combien ?" value={mine.quantity} onChange={e => void actions.saveWish({ ...mine, quantity: Number(e.target.value) })}>
+                    <span>Combien de fois ?</span>
+                    <select aria-label="Combien de fois ?" value={mine.quantity} onChange={e => void actions.saveWish({ ...mine, quantity: Number(e.target.value) })}>
                       {Array.from({ length: 10 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
                   </label>
@@ -84,7 +84,7 @@ export function ActivityCard({ activity }: { activity: Activity }) {
                   {all.map(w => (
                     <span key={w.id} className="chip person-chip">
                       <Avatar name={fullName(w.person_id)} size="xs" />
-                      <span>{firstName(fullName(w.person_id))}{activity.has_quantity && w.quantity > 1 ? ` ×${w.quantity}` : ''}</span>
+                      <span>{firstName(fullName(w.person_id))}{w.quantity > 1 ? ` ×${w.quantity}` : ''}</span>
                     </span>
                   ))}
                 </div>

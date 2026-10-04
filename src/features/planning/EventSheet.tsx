@@ -50,7 +50,7 @@ export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () 
     flush();
     openSheet({
       kind: 'place',
-      item: { key: '', activity, duration: event.duration, occurrence: nextOccurrence(state, activity.id, event.duration), personIds: people },
+      item: { key: '', activity, duration: event.duration, occurrence: nextOccurrence(state, activity.id, event.duration), total: 1, personIds: people },
     });
   };
   return (

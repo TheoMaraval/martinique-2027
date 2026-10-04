@@ -7,7 +7,7 @@ import type { TripEvent } from './types';
 
 const s = makeState();
 const item = (activityId: string, duration: string, personIds: string[]): UnplacedItem => ({
-  key: 'k', activity: s.activities.find(a => a.id === activityId)!, duration, occurrence: 1, personIds,
+  key: 'k', activity: s.activities.find(a => a.id === activityId)!, duration, occurrence: 1, total: 1, personIds,
 });
 const flex = (id: string, date: string, part: TripEvent['start_part'], extra: Partial<TripEvent> = {}) =>
   makeEvent({ id, activity_id: 'surf', duration: 'flex', start_date: date, start_part: part, ...extra });

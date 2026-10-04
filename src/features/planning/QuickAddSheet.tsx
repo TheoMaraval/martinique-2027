@@ -1,6 +1,6 @@
 import { useReadyTrip } from '../../data/TripContext';
 import type { Activity, DurationKey } from '../../domain/types';
-import { canonicalDuration, durationLabel } from '../../domain/durations';
+import { allowsQuantity, canonicalDuration, durationLabel } from '../../domain/durations';
 import { canDrop, nextOccurrence } from '../../domain/placement';
 import { PART_LABEL, slotAt } from '../../domain/slots';
 import { formatDay } from '../../lib/format';
@@ -13,8 +13,8 @@ export function QuickAddSheet({ teamId, idx, onClose }: { teamId: string; idx: n
   const { date, part } = slotAt(state.trip, idx);
   const add = (activity: Activity, duration: DurationKey) => {
     const occurrence = nextOccurrence(state, activity.id, duration);
-    place({ key: '', activity, duration, occurrence, personIds: state.wishes
-      .filter(w => w.activity_id === activity.id && canonicalDuration(w.duration) === duration && (!activity.has_quantity || w.quantity >= occurrence))
+    place({ key: '', activity, duration, occurrence, total: 1, personIds: state.wishes
+      .filter(w => w.activity_id === activity.id && canonicalDuration(w.duration) === duration && (!allowsQuantity(duration) || w.quantity >= occurrence))
       .map(w => w.person_id)
       .filter((p, i, all) => all.indexOf(p) === i) }, teamId, idx);
     onClose();

@@ -19,7 +19,6 @@ export function AddActivityForm({ onDone }: { onDone: () => void }) {
   const [durations, setDurations] = useState<string[]>([]);
   const [days, setDays] = useState(2);
   const [nights, setNights] = useState(1);
-  const [hasQuantity, setHasQuantity] = useState(false);
   const [description, setDescription] = useState('');
   const [links, setLinks] = useState<Link[]>([]);
   const [error, setError] = useState('');
@@ -46,7 +45,7 @@ export function AddActivityForm({ onDone }: { onDone: () => void }) {
     void actions.saveActivity(
       {
         id: activityId, trip_id: state.trip.id, name: name.trim(), category: cat, durations: sorted,
-        has_quantity: hasQuantity, description: description.trim(), links, is_custom: true, created_by: me,
+        has_quantity: false, description: description.trim(), links, is_custom: true, created_by: me,
       },
       // La suggestion compte comme une envie de son créateur (« Ça me tente » ou première formule, ×1).
       { id: newId(), trip_id: state.trip.id, person_id: me, activity_id: activityId, duration: sorted[0], quantity: 1 },
@@ -100,10 +99,6 @@ export function AddActivityForm({ onDone }: { onDone: () => void }) {
           )}
         </Field>
       )}
-      <label className="check">
-        <input type="checkbox" checked={hasQuantity} onChange={e => setHasQuantity(e.target.checked)} />
-        On peut en vouloir plusieurs (ex. randonnées)
-      </label>
       <Field label="Description">
         <textarea aria-label="Description" rows={2} value={description} onChange={e => setDescription(e.target.value)} />
       </Field>

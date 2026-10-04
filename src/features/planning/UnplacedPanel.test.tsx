@@ -22,6 +22,12 @@ it('met en avant les activités non placées les plus suggérées', () => {
   expect(screen.getAllByText('Suggérée par 1')[0].closest('li')).not.toHaveClass('hot');
 });
 
+it('numérote les occurrences d’une activité simple sans has_quantity', () => {
+  renderWithTrip(<DndContext><UnplacedPanel /></DndContext>, { state: makeState({ wishes: [w('1', 'p1', 'surf', 'flex', 2)] }) });
+  expect(screen.getByText('Surf n°1')).toBeInTheDocument();
+  expect(screen.getByText('Surf n°2')).toBeInTheDocument();
+});
+
 it('indique quand tout est placé', () => {
   renderWithTrip(<DndContext><UnplacedPanel /></DndContext>);
   expect(screen.getByText('Toutes les envies sont placées.')).toBeInTheDocument();

@@ -12,7 +12,7 @@ export const SLIDES: Slide[] = [
   {
     Icon: Heart,
     title: 'Choisis tes envies',
-    text: "Dans l'onglet Envies, coche les activités qui te tentent (et la formule pour le bateau), puis indique ton budget (logements + bateau + grosses activités, hors restos). Le badge ×N montre ce qui a le plus de succès.",
+    text: "Dans l'onglet Envies, coche ce qui te tente et combien de fois (et la formule pour le bateau), puis indique ton budget (logements + bateau + grosses activités, hors restos). Le badge ×N montre ce qui a le plus de succès.",
   },
   {
     Icon: CalendarDays,

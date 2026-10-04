@@ -41,8 +41,24 @@ describe('ActivityCard', () => {
   it('choisit un nombre de randonnées', async () => {
     const state = makeState({ wishes: [{ id: 'w3', trip_id: 'trip', person_id: 'p1', activity_id: 'rando', duration: 'flex', quantity: 1 }] });
     const { actions } = renderWithTrip(<ActivityCard activity={rando} />, { state });
-    await userEvent.selectOptions(screen.getByLabelText('Combien ?'), '3');
+    await userEvent.selectOptions(screen.getByLabelText('Combien de fois ?'), '3');
     expect(actions.saveWish).toHaveBeenCalledWith(expect.objectContaining({ id: 'w3', quantity: 3 }));
+  });
+
+  it('propose le nombre de fois pour une activité simple sans has_quantity', async () => {
+    expect(surf.has_quantity).toBe(false);
+    const state = makeState({ wishes: [{ id: 'w4', trip_id: 'trip', person_id: 'p1', activity_id: 'surf', duration: 'flex', quantity: 1 }] });
+    const { actions } = renderWithTrip(<ActivityCard activity={surf} />, { state });
+    await userEvent.selectOptions(screen.getByLabelText('Combien de fois ?'), '2');
+    expect(actions.saveWish).toHaveBeenCalledWith(expect.objectContaining({ id: 'w4', quantity: 2 }));
+  });
+
+  it('n’affiche pas le sélecteur tant que ce n’est pas coché, ni pour un séjour', () => {
+    renderWithTrip(<ActivityCard activity={surf} />);
+    expect(screen.queryByLabelText('Combien de fois ?')).toBeNull();
+    const state = makeState({ wishes: [{ id: 'w5', trip_id: 'trip', person_id: 'p1', activity_id: 'boat', duration: 'multi:4:3', quantity: 1 }] });
+    renderWithTrip(<ActivityCard activity={boat} />, { state });
+    expect(screen.queryByLabelText('Combien de fois ?')).toBeNull();
   });
 
   it('affiche le multiplicateur de succès (personnes distinctes)', () => {

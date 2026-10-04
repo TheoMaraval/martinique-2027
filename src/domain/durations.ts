@@ -27,6 +27,9 @@ export const isFlex = (key: DurationKey): boolean => parseDuration(key).kind ===
 /** Clé canonique : 'flex' pour toute activité simple (anciens codes compris), sinon la formule multi. */
 export const canonicalDuration = (key: DurationKey): DurationKey => (isFlex(key) ? FLEX : key);
 
+/** Une activité simple peut être voulue plusieurs fois ; un séjour multi-jours jamais. */
+export const allowsQuantity = (key: DurationKey): boolean => isFlex(key);
+
 export const multiKey = (days: number, nights: number): DurationKey => `multi:${days}:${nights}`;
 
 const FLEX_RANK = new Map([['flex', 0], ['half', 1], ['day', 2], ['evening', 3]]);

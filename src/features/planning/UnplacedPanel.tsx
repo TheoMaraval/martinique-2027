@@ -30,7 +30,7 @@ function UnplacedChip({ item }: { item: UnplacedItem }) {
       }}
     >
       <span className="grip" aria-hidden="true"><GripVertical size={18} /></span>
-      <strong>{item.activity.name}{item.activity.has_quantity ? ` n°${item.occurrence}` : ''}</strong>
+      <strong>{item.activity.name}{item.total > 1 ? ` n°${item.occurrence}` : ''}</strong>
       <span className="badge">Suggérée par {n}</span>
       {formula && <span className="muted">{formula}</span>}
       <span className="names">{names}</span>

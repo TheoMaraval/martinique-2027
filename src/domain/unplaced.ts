@@ -1,8 +1,8 @@
 import type { Activity, DurationKey, TripState, Wish } from './types';
-import { canonicalDuration } from './durations';
+import { allowsQuantity, canonicalDuration } from './durations';
 
 export interface UnplacedItem {
-  key: string; activity: Activity; duration: DurationKey; occurrence: number; personIds: string[];
+  key: string; activity: Activity; duration: DurationKey; occurrence: number; total: number; personIds: string[];
 }
 
 /** Clé de placement ; les anciens codes de durée sont ramenés à 'flex'. */
@@ -33,13 +33,13 @@ export function unplacedItems(s: TripState): UnplacedItem[] {
     const ws = [...byPerson.values()];
     const activity = s.activities.find(a => a.id === ws[0].activity_id);
     if (!activity) continue;
-    const qty = (w: Wish) => (activity.has_quantity ? w.quantity : 1);
+    const qty = (w: Wish) => (allowsQuantity(duration) ? w.quantity : 1);
     const max = Math.max(...ws.map(qty));
     for (let occ = 1; occ <= max; occ++) {
       const key = placementKey(activity.id, duration, occ);
       if (placed.has(key)) continue;
       items.push({
-        key, activity, duration, occurrence: occ,
+        key, activity, duration, occurrence: occ, total: max,
         personIds: ws.filter(w => qty(w) >= occ).map(w => w.person_id),
       });
     }
