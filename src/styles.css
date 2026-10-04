@@ -690,6 +690,10 @@ table.expenses { width: 100%; border-collapse: separate; border-spacing: 0; font
 .recap-place svg { color: var(--sunset-600); }
 .recap-night { display: flex; align-items: center; gap: 6px; margin: var(--s-3) 0 0; font-size: .875rem; font-weight: 600; color: var(--lagoon-900); }
 .recap-night svg { color: var(--lagoon-700); }
+.recap-meal .recap-night svg { color: var(--sunset-600); }
+.recap-meal-price { margin: 2px 0 0 22px; font-size: .8125rem; }
+.recap-meal .link-list { margin-left: 22px; }
+.expenses-note { margin: var(--s-2) 0 0; font-size: .8125rem; }
 
 /* ---------- Tutoriel d'accueil ---------- */
 .header-actions { display: flex; align-items: center; gap: 4px; flex: none; }

@@ -47,6 +47,7 @@ export function ExpensesTable({ highlight }: { highlight: string }) {
           </tfoot>
         </table>
       </div>
+      <p className="muted expenses-note">Les repas sont indiqués pour info et ne sont pas comptés.</p>
     </section>
   );
 }

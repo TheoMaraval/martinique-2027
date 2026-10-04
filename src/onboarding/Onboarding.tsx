@@ -12,12 +12,12 @@ export const SLIDES: Slide[] = [
   {
     Icon: Heart,
     title: 'Choisis tes envies',
-    text: "Dans l'onglet Envies, coche les activités qui te tentent et leur durée, puis indique ton budget (logements + bateau + grosses activités, hors restos). Le badge ×N montre ce qui a le plus de succès.",
+    text: "Dans l'onglet Envies, coche les activités qui te tentent (et la formule pour le bateau), puis indique ton budget (logements + bateau + grosses activités, hors restos). Le badge ×N montre ce qui a le plus de succès.",
   },
   {
     Icon: CalendarDays,
     title: 'Construis le planning',
-    text: 'Dans Planning, les activités les plus suggérées attendent dans « À placer ». Glisse-les dans un créneau, ou touche-les pour choisir le jour. Tout le monde voit les changements en direct.',
+    text: "Dans Planning, les activités les plus suggérées attendent dans « À placer ». Glisse-les dans un créneau puis étire-les si besoin. Le Midi sert aux pique-niques ou cours de cuisine, et tu peux noter où l'on déjeune et dîne. Tout le monde voit les changements en direct.",
   },
   {
     Icon: Ship,
