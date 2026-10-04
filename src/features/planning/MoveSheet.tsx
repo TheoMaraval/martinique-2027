@@ -12,7 +12,7 @@ export function MoveSheet({ eventId, onClose }: { eventId: string; onClose: () =
   const { state } = useReadyTrip();
   const { moveEvent } = usePlanning();
   const event = state.events.find(e => e.id === eventId);
-  const optionsFor = (teamId: string) => (event ? startOptions(state, teamId, event.duration) : []);
+  const optionsFor = (teamId: string) => (event ? startOptions(state, teamId, event.duration, event.id) : []);
   const [teamId, setTeamId] = useState(event?.team_id ?? '');
   const [idx, setIdx] = useState(() => {
     if (!event) return -1;

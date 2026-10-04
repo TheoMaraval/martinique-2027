@@ -29,7 +29,7 @@ export function AlertsBar() {
         <ul>
           {conflicts.map((a, i) => (
             <li key={i}>
-              {a.kind === 'overlap' && `${name(a.personId)} : ${actName(a.eventIds[0])} et ${actName(a.eventIds[1])} se chevauchent`}
+              {a.kind === 'overlap' && `${name(a.personId)} : ${a.eventIds.slice(0, -1).map(actName).join(', ')} et ${actName(a.eventIds[a.eventIds.length - 1])} se chevauchent`}
               {a.kind === 'two-teams' && `${name(a.personId)} est dans ${teamName(a.teamIds[0])} et ${teamName(a.teamIds[1])} en même temps`}
             </li>
           ))}
