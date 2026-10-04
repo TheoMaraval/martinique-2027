@@ -4,7 +4,7 @@ import { SLOT_CAPACITY, buildSlots, nightDates, slotIndex } from './slots';
 import { effectiveTeamIds, membersOf, teamRange } from './teams';
 
 export type Alert =
-  /** Plus d'activités que la capacité du créneau pour cette personne (≥ 2 activités). */
+  /** Plus d'activités que la capacité du créneau pour cette personne (plus de 3 activités). */
   | { kind: 'overlap'; personId: string; eventIds: string[] }
   | { kind: 'two-teams'; personId: string; teamIds: [string, string] }
   | { kind: 'no-stay'; personId: string; night: string };

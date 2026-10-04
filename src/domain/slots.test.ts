@@ -38,8 +38,8 @@ describe('slots', () => {
     expect(slotAt(TRIP, 5)).toEqual({ date: '2027-04-16', part: 'midi' });
   });
 
-  it('capacité par équipe : 2 le matin et l’après-midi, 1 midi et soir', () => {
-    expect(SLOT_CAPACITY).toEqual({ matin: 2, midi: 1, aprem: 2, soir: 1 });
+  it('capacité par équipe : 3 activités dans chaque créneau', () => {
+    expect(SLOT_CAPACITY).toEqual({ matin: 3, midi: 3, aprem: 3, soir: 3 });
   });
 
   it('refuse une date hors voyage', () => {

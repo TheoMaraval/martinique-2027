@@ -6,8 +6,8 @@ export const PARTS: Part[] = ['matin', 'midi', 'aprem', 'soir'];
 export const PART_LABEL: Record<Part, string> = { matin: 'Matin', midi: 'Midi', aprem: 'Après-midi', soir: 'Soir' };
 const PER_DAY = PARTS.length;
 
-/** Nombre maximal d'activités par équipe et par créneau (et par personne, pour les alertes). */
-export const SLOT_CAPACITY: Record<Part, number> = { matin: 2, midi: 1, aprem: 2, soir: 1 };
+/** Nombre maximal d'activités par équipe et par créneau (et par personne, pour les alertes). Les activités d'un même créneau se suivent : pas d'alerte entre elles tant que la capacité tient. */
+export const SLOT_CAPACITY: Record<Part, number> = { matin: 3, midi: 3, aprem: 3, soir: 3 };
 
 export interface Slot { index: number; date: string; part: Part; plannable: boolean; blockedLabel?: string }
 

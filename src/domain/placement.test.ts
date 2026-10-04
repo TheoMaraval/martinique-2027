@@ -11,6 +11,9 @@ const item = (activityId: string, duration: string, personIds: string[]): Unplac
 });
 const flex = (id: string, date: string, part: TripEvent['start_part'], extra: Partial<TripEvent> = {}) =>
   makeEvent({ id, activity_id: 'surf', duration: 'flex', start_date: date, start_part: part, ...extra });
+/** 3 activités simples dans le même créneau : il est plein. */
+const fill = (prefix: string, date: string, part: TripEvent['start_part'], extra: Partial<TripEvent> = {}) =>
+  [1, 2, 3].map(n => flex(`${prefix}${n}`, date, part, extra));
 const bt = makeTeam({ id: 'bt', start_date: '2027-04-17', start_part: 'matin', end_date: '2027-04-20', end_part: 'soir' });
 
 describe('buildPlacedEvent', () => {
@@ -53,23 +56,28 @@ describe('canDrop', () => {
     expect(canDrop(s, 'all', 7, 'half')).toBe(true);
   });
 
-  it('respecte la capacité : 2 le matin, 1 le midi', () => {
-    const one = makeState({ events: [flex('a', '2027-04-16', 'matin'), flex('m', '2027-04-16', 'midi')] });
-    expect(canDrop(one, 'all', 4, 'flex')).toBe(true);
-    expect(canDrop(one, 'all', 5, 'flex')).toBe(false);
-    expect(canDrop(one, 'all', 5, 'flex', 'm')).toBe(true);
-    const two = makeState({ events: [flex('a', '2027-04-16', 'matin'), flex('b', '2027-04-16', 'matin')] });
-    expect(canDrop(two, 'all', 4, 'flex')).toBe(false);
-    expect(canDrop(two, 'all', 4, 'flex', 'b')).toBe(true);
+  it('respecte la capacité : 3 activités par créneau, Midi et Soir compris', () => {
+    const two = makeState({ events: [flex('a', '2027-04-16', 'matin'), flex('b', '2027-04-16', 'matin'), flex('m', '2027-04-16', 'midi')] });
+    expect(canDrop(two, 'all', 4, 'flex')).toBe(true);
+    expect(canDrop(two, 'all', 5, 'flex')).toBe(true);
+    const full = makeState({ events: [...fill('a', '2027-04-16', 'matin'), ...fill('m', '2027-04-16', 'midi'), ...fill('s', '2027-04-16', 'soir')] });
+    expect(canDrop(full, 'all', 4, 'flex')).toBe(false);
+    expect(canDrop(full, 'all', 4, 'flex', 'a3')).toBe(true);
+    expect(canDrop(full, 'all', 5, 'flex')).toBe(false);
+    expect(canDrop(full, 'all', 7, 'flex')).toBe(false);
+    expect(canDrop(full, 'all', 6, 'flex')).toBe(true);
   });
 
   it('la capacité tient compte des activités étirées et se compte par équipe', () => {
     const st = makeState({
       teams: [...s.teams, bt], team_members: members('bt', ['p1']),
-      events: [flex('a', '2027-04-17', 'matin', { end_date: '2027-04-17', end_part: 'soir' })],
+      events: [
+        ...fill('a', '2027-04-17', 'matin', { end_date: '2027-04-17', end_part: 'midi' }),
+        flex('b', '2027-04-17', 'aprem'),
+      ],
     });
-    expect(canDrop(st, 'all', 9, 'flex')).toBe(false); // midi du 17 occupé par l'étirement
-    expect(canDrop(st, 'all', 10, 'flex')).toBe(true); // après-midi : 1 sur 2
+    expect(canDrop(st, 'all', 9, 'flex')).toBe(false); // midi du 17 plein par l'étirement
+    expect(canDrop(st, 'all', 10, 'flex')).toBe(true); // après-midi : 1 sur 3
     expect(canDrop(st, 'bt', 9, 'flex')).toBe(true); // autre équipe
   });
 
@@ -77,9 +85,9 @@ describe('canDrop', () => {
     const st = makeState({ teams: [...s.teams, bt], team_members: members('bt', ['p1']) });
     expect(canDrop(st, 'bt', 8, 'multi:4:3')).toBe(true);
     expect(canDrop(st, 'bt', 12, 'multi:4:3')).toBe(false);
-    const busy = makeState({ events: [flex('m', '2027-04-18', 'midi')] });
+    const busy = makeState({ events: fill('m', '2027-04-18', 'midi') });
     expect(canDrop(busy, 'all', 8, 'multi:2:1')).toBe(false);
-    expect(canDrop(busy, 'all', 8, 'multi:2:1', 'm')).toBe(true);
+    expect(canDrop(busy, 'all', 8, 'multi:2:1', 'm1')).toBe(true);
   });
 });
 
@@ -97,7 +105,7 @@ describe('canResize / resizedEvent', () => {
     const team = makeTeam({ id: 'bt', start_date: '2027-04-16', start_part: 'matin', end_date: '2027-04-16', end_part: 'aprem' });
     const st = makeState({
       teams: [...s.teams, team], team_members: members('bt', ['p1']),
-      events: [ev, flex('m', '2027-04-17', 'midi'), { ...flex('t', '2027-04-16', 'matin'), team_id: 'bt' }],
+      events: [ev, ...fill('m', '2027-04-17', 'midi'), { ...flex('t', '2027-04-16', 'matin'), team_id: 'bt' }],
     });
     expect(canResize(st, 'e1', 3)).toBe(false);
     expect(canResize(st, 'e1', 9)).toBe(false); // midi du 17 plein
@@ -143,7 +151,7 @@ describe('movedEvent', () => {
 
   it('ramène à 1 créneau quand la longueur ne tient pas', () => {
     const ev = flex('e1', '2027-04-16', 'matin', { end_date: '2027-04-16', end_part: 'aprem' });
-    const st = makeState({ events: [ev, flex('m', '2027-04-17', 'midi')] });
+    const st = makeState({ events: [ev, ...fill('m', '2027-04-17', 'midi')] });
     expect(movedEvent(st, 'e1', 'all', 8)!.event).toMatchObject({
       start_date: '2027-04-17', start_part: 'matin', end_date: '2027-04-17', end_part: 'matin',
     });
@@ -152,7 +160,7 @@ describe('movedEvent', () => {
   });
 
   it('refuse un créneau plein', () => {
-    const st = makeState({ events: [flex('e1', '2027-04-16', 'matin'), flex('m', '2027-04-17', 'midi')] });
+    const st = makeState({ events: [flex('e1', '2027-04-16', 'matin'), ...fill('m', '2027-04-17', 'midi')] });
     expect(movedEvent(st, 'e1', 'all', 9)).toBeNull();
   });
 });
@@ -181,7 +189,7 @@ describe('autres', () => {
     const opts = startOptions(s, 'all', 'flex');
     expect(opts).toHaveLength(40);
     expect(opts.some(x => x.part === 'midi')).toBe(true);
-    const busy = startOptions(makeState({ events: [flex('m', '2027-04-16', 'midi')] }), 'all', 'flex');
+    const busy = startOptions(makeState({ events: fill('m', '2027-04-16', 'midi') }), 'all', 'flex');
     expect(busy.map(x => x.index)).not.toContain(5);
   });
 });

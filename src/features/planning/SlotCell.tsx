@@ -15,7 +15,7 @@ export function SlotCell({ team, idx }: { team: Team; idx: number }) {
   const enabled = slot.plannable && teamCovers(state, team, idx);
   const data: DropData = { teamId: team.id, idx };
   const { setNodeRef, isOver } = useDroppable({ id: `cell|${team.id}|${idx}`, data, disabled: !enabled });
-  // Ordre d'affichage : début, puis id (stable) ; numérotées « 1. » / « 2. » quand le créneau en a plusieurs.
+  // Ordre d'affichage : début, puis id (stable) ; numérotées « 1. » « 2. » « 3. » quand le créneau en a plusieurs.
   const start = (e: (typeof state.events)[number]) => slotIndex(state.trip, e.start_date, e.start_part);
   const events = state.events
     .filter(e => e.team_id === team.id && eventSpan(state, e).slots.includes(idx))
