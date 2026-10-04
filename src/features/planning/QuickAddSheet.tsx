@@ -1,6 +1,6 @@
 import { useReadyTrip } from '../../data/TripContext';
 import type { Activity, DurationKey } from '../../domain/types';
-import { durationLabel } from '../../domain/durations';
+import { canonicalDuration, durationLabel } from '../../domain/durations';
 import { canDrop, nextOccurrence } from '../../domain/placement';
 import { PART_LABEL, slotAt } from '../../domain/slots';
 import { formatDay } from '../../lib/format';
@@ -14,16 +14,18 @@ export function QuickAddSheet({ teamId, idx, onClose }: { teamId: string; idx: n
   const add = (activity: Activity, duration: DurationKey) => {
     const occurrence = nextOccurrence(state, activity.id, duration);
     place({ key: '', activity, duration, occurrence, personIds: state.wishes
-      .filter(w => w.activity_id === activity.id && w.duration === duration && (!activity.has_quantity || w.quantity >= occurrence))
-      .map(w => w.person_id) }, teamId, idx);
+      .filter(w => w.activity_id === activity.id && canonicalDuration(w.duration) === duration && (!activity.has_quantity || w.quantity >= occurrence))
+      .map(w => w.person_id)
+      .filter((p, i, all) => all.indexOf(p) === i) }, teamId, idx);
     onClose();
   };
   return (
     <Sheet title={`Ajouter · ${formatDay(date)} ${PART_LABEL[part]}`} onClose={onClose}>
       <ul className="pick-list">
-        {state.activities.flatMap(a => a.durations.filter(d => canDrop(state, teamId, idx, d)).map(d => (
+        {/* Activité simple : une seule ligne ; séjour : une ligne par formule. */}
+        {state.activities.flatMap(a => [...new Set(a.durations.map(canonicalDuration))].filter(d => canDrop(state, teamId, idx, d)).map(d => (
           <li key={`${a.id}|${d}`}>
-            <button onClick={() => add(a, d)}>{a.name} <span className="muted">· {durationLabel(d)}</span></button>
+            <button onClick={() => add(a, d)}>{a.name}{durationLabel(d) && <span className="muted"> · {durationLabel(d)}</span>}</button>
           </li>
         )))}
       </ul>

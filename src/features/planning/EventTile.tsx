@@ -6,7 +6,7 @@ import { durationLabel } from '../../domain/durations';
 import { eventSpan, participantsOf } from '../../domain/conflicts';
 import { usePlanning, type DragData } from './PlanningContext';
 
-export function EventTile({ event, idx }: { event: TripEvent; idx: number }) {
+export function EventTile({ event, idx, rank }: { event: TripEvent; idx: number; rank?: number }) {
   const { state } = useReadyTrip();
   const { openSheet, alerts } = usePlanning();
   const activity = state.activities.find(a => a.id === event.activity_id);
@@ -22,9 +22,9 @@ export function EventTile({ event, idx }: { event: TripEvent; idx: number }) {
       className={`tile ${isStart ? '' : 'cont'} ${warn ? 'warn' : ''} ${isDragging ? 'dragging' : ''}`}
       onClick={() => openSheet({ kind: 'event', id: event.id })}
     >
-      <strong className="tile-title">{activity?.name ?? 'Activité'}{!isStart && <span className="muted"> (suite)</span>}</strong>
+      <strong className="tile-title">{rank && <span className="tile-rank">{rank}. </span>}{activity?.name ?? 'Activité'}{!isStart && <span className="muted"> (suite)</span>}</strong>
       <span className="tile-meta">
-        {durationLabel(event.duration)} · {count} pers.{event.place_name ? ` · ${event.place_name}` : ''}
+        {[durationLabel(event.duration), `${count} pers.`, event.place_name].filter(Boolean).join(' · ')}
       </span>
       {(event.links.length > 0 || comments > 0) && (
         <span className="tile-icons">

@@ -17,7 +17,7 @@ export function DragPreview({ data }: { data: DragData }) {
   }
   return (
     <div className="drag-preview">
-      <strong>{name}</strong> <span className="muted">{duration}</span>
+      <strong>{name}</strong>{duration && <> <span className="muted">{duration}</span></>}
     </div>
   );
 }

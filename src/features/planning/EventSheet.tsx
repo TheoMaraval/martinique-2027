@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useReadyTrip } from '../../data/TripContext';
-import { durationLabel } from '../../domain/durations';
-import { participantsOf } from '../../domain/conflicts';
-import { nextOccurrence } from '../../domain/placement';
-import { PART_LABEL } from '../../domain/slots';
+import { isFlex } from '../../domain/durations';
+import { eventSpan, participantsOf } from '../../domain/conflicts';
+import { nextOccurrence, resizeOptions, resizedEvent } from '../../domain/placement';
+import { PART_LABEL, buildSlots } from '../../domain/slots';
+import { withFormula } from '../../lib/labels';
 import { formatDay } from '../../lib/format';
 import { Sheet } from '../../ui/Sheet';
 import { Field } from '../../ui/Field';
@@ -53,8 +54,9 @@ export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () 
     });
   };
   return (
-    <Sheet title={`${activity?.name ?? 'Activité'} · ${durationLabel(event.duration)}`} onClose={onClose}>
+    <Sheet title={withFormula(activity?.name ?? 'Activité', event.duration)} onClose={onClose}>
       <p className="muted">{team?.name} · {formatDay(event.start_date)} · {PART_LABEL[event.start_part]}</p>
+      {isFlex(event.duration) && <ResizeField eventId={event.id} />}
       <Field label={`Participants (${people.length})`}>
         <PeoplePicker people={state.people} selected={people} onChange={ids => { setPeople(ids); setPeopleTouched(true); }} />
       </Field>
@@ -81,5 +83,42 @@ export function EventSheet({ eventId, onClose }: { eventId: string; onClose: () 
         <CommentsThread eventId={event.id} />
       </Field>
     </Sheet>
+  );
+}
+
+/** « Horaire » d'une activité simple : du créneau de début jusqu'à un créneau de fin (inclus). */
+function ResizeField({ eventId }: { eventId: string }) {
+  const { state, actions } = useReadyTrip();
+  const event = state.events.find(e => e.id === eventId)!;
+  const slots = buildSlots(state.trip);
+  const span = eventSpan(state, event).slots;
+  const start = span[0];
+  const end = span[span.length - 1];
+  if (start == null) return null;
+  const options = resizeOptions(state, eventId);
+  // La fin actuelle reste proposée même si elle n'est plus valide (ex. capacité dépassée par ailleurs).
+  const choices = options.some(o => o.index === end) ? options : [...options, slots[end]].sort((a, b) => a.index - b.index);
+  const pos = choices.findIndex(o => o.index === end);
+  const next = options.find(o => o.index > end);
+  const prev = [...options].reverse().find(o => o.index < end);
+  const resize = (idx: number) => {
+    const e = resizedEvent(state, eventId, idx);
+    if (e) void actions.saveEvent(e);
+  };
+  const label = (i: number) => `${formatDay(slots[i].date)} · ${PART_LABEL[slots[i].part]}`;
+  return (
+    <Field label="Horaire">
+      <p className="resize-from">De : {label(start)}</p>
+      <label className="resize-to">
+        <span>Jusqu'à</span>
+        <select aria-label="Jusqu'à" value={end} onChange={e => resize(Number(e.target.value))}>
+          {choices.map(o => <option key={o.index} value={o.index}>{label(o.index)}</option>)}
+        </select>
+      </label>
+      <div className="row resize-actions">
+        <button type="button" disabled={!prev || pos <= 0} onClick={() => prev && resize(prev.index)}>Réduire d'un créneau</button>
+        <button type="button" disabled={!next} onClick={() => next && resize(next.index)}>Étendre d'un créneau</button>
+      </div>
+    </Field>
   );
 }

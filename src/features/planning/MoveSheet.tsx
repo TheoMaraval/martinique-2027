@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useReadyTrip } from '../../data/TripContext';
-import { durationLabel } from '../../domain/durations';
 import { startOptions } from '../../domain/placement';
 import { PART_LABEL, slotIndex } from '../../domain/slots';
 import { formatDay } from '../../lib/format';
+import { withFormula } from '../../lib/labels';
 import { Sheet } from '../../ui/Sheet';
 import { Field } from '../../ui/Field';
 import { usePlanning } from './PlanningContext';
@@ -25,7 +25,7 @@ export function MoveSheet({ eventId, onClose }: { eventId: string; onClose: () =
   const options = optionsFor(teamId);
   const effectiveIdx = options.some(o => o.index === idx) ? idx : options[0]?.index ?? -1;
   return (
-    <Sheet title={`Déplacer · ${activity?.name ?? 'Activité'} (${durationLabel(event.duration)})`} onClose={onClose}>
+    <Sheet title={`Déplacer · ${withFormula(activity?.name ?? 'Activité', event.duration)}`} onClose={onClose}>
       <Field label="Équipe">
         <select aria-label="Équipe" value={teamId} onChange={e => { setTeamId(e.target.value); setIdx(optionsFor(e.target.value)[0]?.index ?? -1); }}>
           {state.teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}

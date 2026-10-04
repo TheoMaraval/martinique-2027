@@ -15,11 +15,12 @@ function UnplacedChip({ item }: { item: UnplacedItem }) {
   const data: DragData = { type: 'wish', item };
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `wish|${item.key}`, data });
   const n = item.personIds.length;
+  const formula = durationLabel(item.duration);
   const names = item.personIds.map(id => firstName(state.people.find(p => p.id === id)?.name ?? '?')).join(', ');
   return (
     <li
       ref={setNodeRef} {...listeners} {...attributes}
-      className={`unplaced-item ${n >= HOT_THRESHOLD ? 'hot' : ''} ${isDragging ? 'dragging' : ''}`}
+      className={`unplaced-item ${formula ? '' : 'simple'} ${n >= HOT_THRESHOLD ? 'hot' : ''} ${isDragging ? 'dragging' : ''}`}
       onClick={() => openSheet({ kind: 'place', item })}
       onKeyDown={e => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -31,7 +32,7 @@ function UnplacedChip({ item }: { item: UnplacedItem }) {
       <span className="grip" aria-hidden="true"><GripVertical size={18} /></span>
       <strong>{item.activity.name}{item.activity.has_quantity ? ` n°${item.occurrence}` : ''}</strong>
       <span className="badge">Suggérée par {n}</span>
-      <span className="muted">{durationLabel(item.duration)}</span>
+      {formula && <span className="muted">{formula}</span>}
       <span className="names">{names}</span>
     </li>
   );
