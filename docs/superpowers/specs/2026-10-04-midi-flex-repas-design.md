@@ -25,7 +25,7 @@ Origine : retour du groupe (« pique-nique demi-journée c'est chelou, il faudra
 - Une activité `flex` déposée occupe 1 créneau. **Étirer** : dans la fiche activité, sélecteur « Jusqu'à » (créneaux suivants valides) + boutons « Étendre d'un créneau » / « Réduire d'un créneau ». Validation `canResize(s, eventId, endIdx)` (fin ≥ début, couverture équipe, capacité).
 - Déplacer une activité étirée conserve sa longueur (même nombre de créneaux) si possible, sinon la ramène à 1 créneau.
 - **Alerte de chevauchement** : pour une personne, si sur un créneau le nombre d'activités auxquelles elle participe dépasse la capacité du créneau (2 le matin/après-midi, 1 midi/soir).
-- Dans une case à 2 activités, elles sont affichées dans l'ordre (début puis date de création) avec « 1. » / « 2. ».
+- Dans une case à 2 activités, elles sont affichées dans l'ordre (début puis identifiant, ordre stable) avec « 1. » / « 2. ».
 
 ## Envies
 - Activité simple : une pilule unique **« Ça me tente »** (+ « Combien ? » si quantité).

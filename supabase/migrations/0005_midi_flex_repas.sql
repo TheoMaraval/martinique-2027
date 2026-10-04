@@ -1,12 +1,15 @@
 -- v2 : créneau « Midi », activités simples étirables (« flex »), repas par équipe et par jour.
 -- Spec : docs/superpowers/specs/2026-10-04-midi-flex-repas-design.md
 
+-- 0. Aucune écriture concurrente pendant la conversion (sauvegarde cohérente).
+lock table public.wishes, public.activities, public.events in share row exclusive mode;
+
 -- 1. Sauvegarde préalable (schéma sans aucun droit pour anon/authenticated).
 create schema if not exists backup;
 revoke all on schema backup from public, anon, authenticated;
-create table if not exists backup.wishes_20261004 as table public.wishes;
-create table if not exists backup.activities_20261004 as table public.activities;
-create table if not exists backup.events_20261004 as table public.events;
+create table backup.wishes_20261004 as table public.wishes;
+create table backup.activities_20261004 as table public.activities;
+create table backup.events_20261004 as table public.events;
 revoke all on all tables in schema backup from public, anon, authenticated;
 
 -- 2. Moments de la journée : matin, midi, aprem, soir.
@@ -34,8 +37,19 @@ where duration = 'evening';
 
 -- Journée : du matin (ou du premier créneau planifiable du jour, déjà retenu comme départ) à l'après-midi.
 update events set duration = 'flex', end_date = start_date,
-  end_part = case when start_part in ('matin', 'midi', 'aprem') then 'aprem' else start_part end
+  end_part = case
+    when start_date = (select t.end_date from trips t where t.id = events.trip_id) then start_part
+    when start_part in ('matin', 'midi', 'aprem') then 'aprem'
+    else start_part end
 where duration = 'day';
+
+-- Renumérotation des occurrences par activité (half#1 et day#1 deviendraient flex#1 deux fois).
+with r as (
+  select id, row_number() over (partition by activity_id order by start_date,
+           array_position(array['matin', 'midi', 'aprem', 'soir'], start_part), occurrence, id) as n
+  from events where duration = 'flex'
+)
+update events e set occurrence = r.n from r where e.id = r.id and e.occurrence <> r.n;
 
 -- 5. Activités : durées simples → {flex} ; formules multi-jours conservées.
 update activities set durations =
@@ -106,6 +120,12 @@ begin
     raise exception 'forbidden';
   end if;
   if (p->>'end_date') is not null and (p->>'end_date')::date < (p->>'start_date')::date then
+    raise exception 'invalid_input';
+  end if;
+  -- Dates hors voyage : elles feraient planter le calcul des créneaux chez tous les clients.
+  if exists (select 1 from trips t where t.id = v and (
+       (p->>'start_date')::date not between t.start_date and t.end_date
+       or ((p->>'end_date') is not null and (p->>'end_date')::date not between t.start_date and t.end_date))) then
     raise exception 'invalid_input';
   end if;
   insert into events (id, trip_id, team_id, activity_id, duration, occurrence, start_date, start_part,

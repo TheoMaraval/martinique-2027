@@ -15,17 +15,17 @@ begin
 
   insert into activities (trip_id, name, category, durations, has_quantity, is_custom) values
     (v_trip, 'Bateau multi-jours', 'Bateau', array['multi:4:3', 'multi:3:3', 'multi:3:2'], false, false),
-    (v_trip, 'Escapade bateau', 'Bateau', array['half', 'day'], false, false),
-    (v_trip, 'Pêche', 'Mer', array['half', 'day'], false, false),
-    (v_trip, 'Surf', 'Mer', array['half', 'day'], false, false),
-    (v_trip, 'Plage', 'Détente', array['half', 'day'], false, false),
-    (v_trip, 'Pique-nique', 'Détente', array['half'], false, false),
-    (v_trip, 'Coucher de soleil', 'Détente', array['evening'], false, false),
-    (v_trip, 'Randonnée', 'Nature', array['half', 'day'], true, false),
-    (v_trip, 'Cours de danse locale', 'Local', array['half', 'evening'], false, false),
-    (v_trip, 'Cours de cuisine locale', 'Local', array['half'], false, false),
-    (v_trip, 'Soirée locale', 'Local', array['evening'], false, false),
-    (v_trip, 'Goûter un mafé', 'Local', array['evening', 'half'], false, false);
+    (v_trip, 'Escapade bateau', 'Bateau', array['flex'], false, false),
+    (v_trip, 'Pêche', 'Mer', array['flex'], false, false),
+    (v_trip, 'Surf', 'Mer', array['flex'], false, false),
+    (v_trip, 'Plage', 'Détente', array['flex'], false, false),
+    (v_trip, 'Pique-nique', 'Détente', array['flex'], false, false),
+    (v_trip, 'Coucher de soleil', 'Détente', array['flex'], false, false),
+    (v_trip, 'Randonnée', 'Nature', array['flex'], true, false),
+    (v_trip, 'Cours de danse locale', 'Local', array['flex'], false, false),
+    (v_trip, 'Cours de cuisine locale', 'Local', array['flex'], false, false),
+    (v_trip, 'Soirée locale', 'Local', array['flex'], false, false),
+    (v_trip, 'Goûter un mafé', 'Local', array['flex'], false, false);
 
   insert into teams (trip_id, name, color, start_date, start_part, end_date, end_part, is_default)
   values (v_trip, 'Tout le groupe', '#0e9aa7', '2027-04-15', 'matin', '2027-04-25', 'soir', true);
